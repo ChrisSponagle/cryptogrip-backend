@@ -1,0 +1,57 @@
+# Windows thumbnail cache files
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+.idea
+
+# Python environment files
+*.ipynb
+*.pyc
+
+# Visual studio files
+.vscode/
+
+# Node files
+/node_modules/
+
+#Configuration file
+.env
+
+# Project's variable files
+/var/
+
+# Built files
+/vendor/
+
+package-lock.json
