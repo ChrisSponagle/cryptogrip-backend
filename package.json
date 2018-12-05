@@ -1,7 +1,7 @@
 {
-  "name": "rate_this_cu-API",
+  "name": "incodium_waller-API",
   "version": "1.0.0",
-  "description": "Node rest API for Rate This CU.",
+  "description": "Node rest API for Incodium Wallet",
   "main": "app.js",
   "scripts": {
     "start": "node ./app.js",
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@gitlab.com:suwon-ladies-corp/rate_this_cu_api.git"
+    "url": "ssh://git@bitbucket.keysupreme.com:7999/in/wallet-api.git"
   },
   "license": "ISC",
   "dependencies": {
@@ -32,6 +32,7 @@
     "passport": "0.3.2",
     "passport-local": "1.0.0",
     "request": "2.69.0",
+    "sendgrid": "^5.2.3",
     "slug": "0.9.1",
     "underscore": "1.8.3"
   },
