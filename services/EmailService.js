@@ -38,7 +38,8 @@ const EmailService =
 
     /**
      * Save verification code on database
-     * @param {*} param0 
+     * @param {string} code
+     * @param {User} oUser
      */
     saveVerificationCode: function({code, oUser})
     {

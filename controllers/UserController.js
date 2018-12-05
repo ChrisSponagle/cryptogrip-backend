@@ -16,6 +16,7 @@ var router = require('express').Router();
 var passport = require('passport');
 var User = mongoose.model('User');
 const {sendVerificationEmail} = require("../services/EmailService");
+const {createEthAccount} = require("../services/Web3Service");
 
 /**
  * Register new user account
@@ -48,9 +49,16 @@ exports.createAccount = function(req, res, next)
   oUser.username = username;
   oUser.email = email;
   oUser.setPassword(password);
+
+  // Send verification code for email
   sendVerificationEmail({oUser});
 
-  // Try to save new user
+  // Create new Eth account
+  var oAccount = createEthAccount();
+  oUser.address = oAccount.address;
+  oUser.privateKey = oAccount.privateKey
+
+  // Save new user
   oUser.save()
     .then(function(){
       return res.json({
