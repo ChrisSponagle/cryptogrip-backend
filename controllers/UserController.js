@@ -40,7 +40,7 @@ exports.createAccount = function(req, res, next)
       success: false,
       errors: aErrors
     })
-    .status(406);
+    .status(422);
   }
 
   email = email.toLowerCase().trim();

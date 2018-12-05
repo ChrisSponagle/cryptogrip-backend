@@ -5,6 +5,11 @@ var passport = require('passport');
 var auth = require('../auth');
 const UserController = require("../../controllers/UserController");
 
+
+// Register new user account
+router.post('/api/user', UserController.createAccount);
+
+router.post('/api/user/verify/email');
 // router.get('/user', auth.required, function(req, res, next){
 //   User.findById(req.payload.id).then(function(user){
 //     if(!user){ return res.sendStatus(401); }
@@ -56,7 +61,5 @@ const UserController = require("../../controllers/UserController");
 //   })(req, res, next);
 // });
 
-// Register new user account
-router.post('/api/user', UserController.createAccount);
 
 module.exports = router;

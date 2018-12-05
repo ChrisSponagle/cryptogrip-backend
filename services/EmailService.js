@@ -13,7 +13,6 @@
 
 var mongoose = require('mongoose');
 var VerificationEmailModel = mongoose.model('VerificationEmail');
-var User = mongoose.model('User');
 var verificationEmail = require("../emails/verificationEmail");
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_KEY);
