@@ -6,7 +6,7 @@
 
 	Version: 2018
 	Author: Lorran Pegoretti
-	Email: lorranpego@gmail.com
+	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
 	Date: 05/02/2018
 *********************************************************/
@@ -15,6 +15,7 @@ var mongoose = require('mongoose');
 var router = require('express').Router();
 var passport = require('passport');
 var User = mongoose.model('User');
+const {sendVerificationEmail} = require("../services/EmailService");
 
 /**
  * Register new user account
@@ -31,13 +32,54 @@ exports.createAccount = function(req, res, next)
   var email = req.body.email || req.query.email;
   var password = req.body.password || req.query.password;
   
-  var user = new User();
+  // Validate input values
+  var aErrors = checkMandatoryFields({email, username, password});
+  if( Object.keys(aErrors).length ){
+    return res.json({
+      success: false,
+      errors: aErrors
+    })
+    .status(406);
+  }
 
-  user.username = username;
-  user.email = email;
-  user.setPassword(password);
+  email = email.toLowerCase().trim();
 
-  user.save().then(function(){
-    return res.json({user: user.toAuthJSON()});
-  }).catch(next);
+  var oUser = new User();
+  oUser.username = username;
+  oUser.email = email;
+  oUser.setPassword(password);
+  sendVerificationEmail(email);
+
+  // Try to save new user
+  oUser.save()
+    .then(function(){
+      return res.json({
+        success: true,
+        user: oUser.toAuthJSON()
+      });
+    })
+    .catch(next);
+}
+
+/**
+ * Check if mandatory fields are present on request or not.
+ * 
+ * @param {username, email, password}
+ * @returns Object
+*/
+const checkMandatoryFields = function({username, email, password})
+{
+  var aErors = {};
+
+  if( !username ){
+    aErors.username = "can not be blank";
+  }
+  if ( !email){
+    aErors.email = "can not be blank";
+  }
+  if( !password ){
+    aErors.password = "can not be blank";
+  }
+
+  return aErors;
 }

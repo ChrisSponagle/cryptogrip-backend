@@ -1,39 +1,11 @@
 var mongoose = require('mongoose');
-var uniqueValidator = require('mongoose-unique-validator');
-var jwt = require('jsonwebtoken');
-var secret = require('../config').secret;
-const bcrypt = require('bcrypt');
 
 var UserSchema = new mongoose.Schema({
-  username: {type: String, unique: true, required: [true, "can not be blank"], match: [/^[a-zA-Z0-9]+$/, 'is invalid'], index: true},
-  email: {type: String, lowercase: true, unique: true, required: [true, "can not be blank"], match: [/\S+@\S+\.\S+/, 'is invalid'], index: true},
-  password: {
-    type: String,
-    default: ""
-  },
-  verified: {
-    type: Boolean,
-    default: false,
-  },
-  passphrase: {
-    type: String,
-    default: ''
-  },
-  isDeleted: {
-      type: Boolean,
-      default: false
-  },
-  address:{
-      type: String,
-      default: ''
-  },
-  privateKey: {
-    type: String,
-    default: ''
-  }
+  code: {type: String, index: true},
+  user:  {type: Schema.Types.ObjectId, ref: 'User'},
+  used: {type: Boolean} 
 }, {timestamps: true});
 
-UserSchema.plugin(uniqueValidator, {message: 'is already taken.'});
 
 UserSchema.methods.validPassword = function(password) {
   return bcrypt.compareSync(password, this.password);
