@@ -64,14 +64,14 @@ UserSchema.methods.toAuthJSON = function(){
     username: this.username,
     email: this.email,
     token: this.generateJWT(),
-    address: this.address
+    wallet_address: this.address
   };
 };
 
 UserSchema.methods.toProfileJSONFor = function(user){
   return {
     username: this.username,
-    address: this.address
+    wallet_address: this.address
   };
 };
 

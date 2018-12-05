@@ -23,13 +23,19 @@ var User = mongoose.model('User');
  * @param {*} res - Response object
  * @param {*} next 
  */
-var createAccount = 
-exports.createAccount = function(req, res, next){
+const createAccount = 
+exports.createAccount = function(req, res, next)
+{
+  // Get values from request
+  var username = req.body.username || req.query.username;
+  var email = req.body.email || req.query.email;
+  var password = req.body.password || req.query.password;
+  
   var user = new User();
 
-  user.username = req.body.user.username;
-  user.email = req.body.user.email;
-  user.setPassword(req.body.user.password);
+  user.username = username;
+  user.email = email;
+  user.setPassword(password);
 
   user.save().then(function(){
     return res.json({user: user.toAuthJSON()});

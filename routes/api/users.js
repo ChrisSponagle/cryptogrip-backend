@@ -57,6 +57,6 @@ const UserController = require("../../controllers/UserController");
 // });
 
 // Register new user account
-router.post('/users', UserController.createAccount);
+router.post('/api/user', UserController.createAccount);
 
 module.exports = router;
