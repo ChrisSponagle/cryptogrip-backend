@@ -41,6 +41,7 @@ else {
 }
 
 require('./models/User');
+require('./models/VerificationEmail');
 // require('./models/Article');
 // require('./models/Comment');
 require('./config/passport');

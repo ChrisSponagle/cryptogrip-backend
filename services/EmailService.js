@@ -11,24 +11,41 @@
 	Date: 05/02/2018
 *********************************************************/
 
+var mongoose = require('mongoose');
+var VerificationEmailModel = mongoose.model('VerificationEmail');
+var User = mongoose.model('User');
 var verificationEmail = require("../emails/verificationEmail");
 const sgMail = require('@sendgrid/mail');
-// sgMail.setApiKey('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');
 sgMail.setApiKey(process.env.SENDGRID_KEY);
 
 const EmailService = 
 {   
     /**
-     * Send verification email with new 
+     * Send verification email with new code
      * 
      * @param {String} email 
      */
-    sendVerificationEmail: function(email)
+    sendVerificationEmail: function({oUser})
     {
-        var code = Math.floor(Math.random() * 90000) + 10000;       
+        const code = Math.floor(Math.random() * 90000) + 10000;       
+        const email = oUser.email;
         msg = verificationEmail.buildVerificationEmail({email, code});
-        sgMail.send(msg);
+        
+        sgMail.send(msg)
+            .then(EmailService.saveVerificationCode({code, oUser}));
         return true;
+    },
+
+    /**
+     * Save verification code on database
+     * @param {*} param0 
+     */
+    saveVerificationCode: function({code, oUser})
+    {
+        var oVerificationEmail = new VerificationEmailModel();
+        oVerificationEmail.user = oUser;
+        oVerificationEmail.code = code;
+        oVerificationEmail.save();
     }
 };
 

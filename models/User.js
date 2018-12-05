@@ -1,3 +1,16 @@
+/*********************************************************
+ *******************    Information    *******************
+ *********************************************************
+
+	User schema
+
+	Version: 2018
+	Author: Lorran Pegoretti
+	Email: lorran.pegoretti@keysupreme.com
+	Subject: Incodium Wallet API
+	Date: 05/02/2018
+*********************************************************/
+
 var mongoose = require('mongoose');
 var uniqueValidator = require('mongoose-unique-validator');
 var jwt = require('jsonwebtoken');

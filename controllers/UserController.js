@@ -48,7 +48,7 @@ exports.createAccount = function(req, res, next)
   oUser.username = username;
   oUser.email = email;
   oUser.setPassword(password);
-  sendVerificationEmail(email);
+  sendVerificationEmail({oUser});
 
   // Try to save new user
   oUser.save()
