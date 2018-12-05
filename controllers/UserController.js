@@ -17,6 +17,7 @@ var passport = require('passport');
 var User = mongoose.model('User');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
+const {getRandomPassphrases} = require("../services/PassphraseService");
 
 /**
  * Register new user account
@@ -24,8 +25,7 @@ const {createEthAccount} = require("../services/Web3Service");
  * @param {*} req - Request object
  * @param {*} res - Response object
  * @param {*} next 
- */
-const createAccount = 
+*/
 exports.createAccount = function(req, res, next)
 {
   // Get values from request
@@ -57,6 +57,11 @@ exports.createAccount = function(req, res, next)
   var oAccount = createEthAccount();
   oUser.address = oAccount.address;
   oUser.privateKey = oAccount.privateKey
+
+  // Generate passphrase list for user
+  const oPassphrases = getRandomPassphrases(); 
+  var sPassphrases = oPassphrases.indexes.join(' ');
+  oUser.passphrase = sPassphrases;
 
   // Save new user
   oUser.save()
