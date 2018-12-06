@@ -5,11 +5,14 @@ var auth = require('../auth');
 const UserController = require("../../controllers/UserController");
 const EmailController = require("../../controllers/EmailController");
 
-
 // Register new user account
 router.post('/api/user', UserController.createAccount);
 
+// Verify user's email
 router.put('/api/user/verify/email', auth.required, EmailController.confirmEmail);
+
+// Get user's passphrase
+router.get('/api/user/passphrase', auth.required, UserController.getPassPhrase);
 
 // router.get('/user', auth.required, function(req, res, next){
 //   User.findById(req.payload.id).then(function(user){

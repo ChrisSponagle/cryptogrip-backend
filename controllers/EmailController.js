@@ -12,8 +12,6 @@
 *********************************************************/
 
 var mongoose = require('mongoose');
-var router = require('express').Router();
-var passport = require('passport');
 var User = mongoose.model('User');
 var VerificationEmailModel = mongoose.model('VerificationEmail');
 const {sendVerificationEmail} = require("../services/EmailService");

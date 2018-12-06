@@ -12,12 +12,10 @@
 *********************************************************/
 
 var mongoose = require('mongoose');
-var router = require('express').Router();
-var passport = require('passport');
 var User = mongoose.model('User');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
-const {getRandomPassphrases} = require("../services/PassphraseService");
+const {getRandomPassphrases, getPassphrase} = require("../services/PassphraseService");
 
 /**
  * Register new user account
@@ -72,6 +70,29 @@ exports.createAccount = function(req, res, next)
       });
     })
     .catch(next);
+}
+
+/**
+ * Get user's passphrase
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.getPassPhrase = function(req, res, next)
+{
+  // Get values from request
+  var sUserId = req.payload.id;
+
+  User.findById(sUserId)
+        .then(function(user){
+          var aPassPhrase = getPassphrase(user.passphrase);
+          res.json({
+              success: true,
+              passphrase: aPassPhrase.join(" ")
+            });
+        });
+
 }
 
 /**

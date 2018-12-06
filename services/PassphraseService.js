@@ -16,6 +16,23 @@ const noWords = parseInt(process.env.PASSPHRASE_LENGTH) || 3;
 
 const PassPhraseService = 
 {   
+    /**
+     * Get list of user's passphrase
+     * 
+     * @param {String} sIndexes - Indexes of user's passphrases
+     * @return {Array} - Array with user's passphrase
+     */
+    getPassphrase: function(sIndexes)
+    {
+        var aIndexes = sIndexes.split(" ");
+        var aPassphrase = []
+        aIndexes.forEach(element => {
+            aPassphrase.push(passphrase[element]);
+        });
+
+        return aPassphrase;
+    },
+
     // TODO: Check if user's passphrase are correct
     checkPassphrase: function(){
 
@@ -30,7 +47,7 @@ const PassPhraseService =
         var aIndexes = new Array(noWords);
         var n = noWords;
         var len = passphrase.length;
-        var taken = new Array(len)
+        var taken = new Array(len);
 
         while (n--) {
             var x = Math.floor(Math.random() * len);
