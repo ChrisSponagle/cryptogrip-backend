@@ -67,7 +67,7 @@ exports.createAccount = function(req, res, next)
       const oPassphrases = getRandomPassphrases(); 
       var sPassphrases = oPassphrases.indexes.join(' ');
       oUser.passphrase = sPassphrases;
-
+      oUser.save();
       return res.json({
         success: true,
         user: oUser.toAuthJSON()
