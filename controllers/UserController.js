@@ -308,6 +308,53 @@ exports.updatePassword = function(req, res, next)
 }
 
 /**
+ * Update user's email
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.updateEmail = function(req, res, next)
+{
+  const newEmail = req.body.email || req.query.email;
+  const sUserId = req.payload.id;
+
+  if( !newEmail ){
+    return res.json({
+      success: false,
+      errors: {email: "field is required."}
+    })
+    .status(400);
+  }
+
+  User.findById(sUserId)
+    .then(function(user)
+    {
+        if( !user )
+        {
+          return res.json({
+            success: false,
+            errors: {message: "User not found"}
+          });
+        }
+
+        // Confim user is fully authenticated
+        if( !isFullyAuthenticated({user, res}) ){
+          return false;
+        }
+
+        const oUser = user;
+        
+        // Send verification code for new email
+        sendVerificationEmail({oUser, newEmail});        
+
+        return res.json({
+          success: true,
+        });
+    });
+}
+
+/**
  * Check if mandatory fields are present on request or not.
  * 
  * @param {username, email, password}

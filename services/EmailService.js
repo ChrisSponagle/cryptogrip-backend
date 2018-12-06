@@ -24,14 +24,20 @@ const EmailService =
      * 
      * @param {User} oUser 
      */
-    sendVerificationEmail: function({oUser})
+    sendVerificationEmail: function({oUser, newEmail})
     {
-        const code = Math.floor(Math.random() * 90000) + 10000;       
-        const email = oUser.email;
+        const code = Math.floor(Math.random() * 90000) + 10000;
+        var email = "";
+        if(!newEmail){
+            email = oUser.email;
+        }else{
+            email = newEmail;
+        }
+        
         msg = verificationEmail.buildVerificationEmail({email, code});
         
         sgMail.send(msg)
-            .then(EmailService.saveVerificationCode({code, oUser}));
+            .then(EmailService.saveVerificationCode({code, oUser, newEmail}));
         return true;
     },
 
@@ -55,11 +61,14 @@ const EmailService =
      * @param {string} code
      * @param {User} oUser
      */
-    saveVerificationCode: function({code, oUser})
+    saveVerificationCode: function({code, oUser, newEmail})
     {
         var oVerificationEmail = new VerificationEmailModel();
         oVerificationEmail.user = oUser;
         oVerificationEmail.code = code;
+        if(newEmail){
+            oVerificationEmail.email = newEmail;
+        }
         oVerificationEmail.save();
     }
 };
