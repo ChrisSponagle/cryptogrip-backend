@@ -23,6 +23,9 @@ router.get('/api/user/passphrase', auth.required, UserController.getPassPhrase);
 // Login user
 router.post('/api/user/login', UserController.loginUser);
 
+// Login user
+router.put('/api/user/password',  auth.required, UserController.updatePassword);
+
 // router.get('/user', auth.required, function(req, res, next){
 //   User.findById(req.payload.id).then(function(user){
 //     if(!user){ return res.sendStatus(401); }

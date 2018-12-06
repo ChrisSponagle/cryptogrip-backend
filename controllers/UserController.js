@@ -83,7 +83,8 @@ exports.createAccount = function(req, res, next)
  * @param {*} res - Response object
  * @param {*} next 
  */
-exports.loginUser = function(req, res, next){
+exports.loginUser = function(req, res, next)
+{
 
   // Get values from request
   var username = req.body.username || req.query.username;
@@ -241,6 +242,68 @@ exports.getPassPhrase = function(req, res, next)
           success: true,
           passphrase: aPassPhrase.join(" ")
         });
+    });
+}
+
+/**
+ * Update user's password
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.updatePassword = function(req, res, next)
+{
+  const password = req.body.password || req.query.password;
+  const newPassword = req.body.new_password || req.query.new_password;
+  const sUserId = req.payload.id;
+
+  if( !password ){
+    return res.json({
+      success: false,
+      errors: {password: "field is required."}
+    })
+    .status(400);
+  }
+
+  if( !newPassword ){
+    return res.json({
+      success: false,
+      errors: {new_password: "field is required."}
+    })
+    .status(400);
+  }
+
+  User.findById(sUserId)
+    .then(function(user)
+    {
+        if( !user )
+        {
+          return res.json({
+            success: false,
+            errors: {message: "User not found"}
+          });
+        }
+
+        // Confim user is fully authenticated
+        if( !isFullyAuthenticated({user, res}) ){
+          return false;
+        }
+
+        if( user.validPassword(password) )
+        {
+            user.setPassword(newPassword);
+            user.save();
+            return res.json({
+              success: true,
+            });
+        }
+        else{
+          return res.json({
+            success: false,
+            errors: {message: "Password is not valid"}
+          });
+        }
     });
 }
 
