@@ -1,15 +1,16 @@
 // var mongoose = require('mongoose');
 var router = require('express').Router();
 var passport = require('passport');
-// var User = mongoose.model('User');
 var auth = require('../auth');
 const UserController = require("../../controllers/UserController");
+const EmailController = require("../../controllers/EmailController");
 
 
 // Register new user account
 router.post('/api/user', UserController.createAccount);
 
-router.post('/api/user/verify/email');
+router.put('/api/user/verify/email', auth.required, EmailController.confirmEmail);
+
 // router.get('/user', auth.required, function(req, res, next){
 //   User.findById(req.payload.id).then(function(user){
 //     if(!user){ return res.sendStatus(401); }
