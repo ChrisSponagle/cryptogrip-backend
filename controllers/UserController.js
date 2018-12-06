@@ -85,9 +85,20 @@ exports.getPassPhrase = function(req, res, next)
   var sUserId = req.payload.id;
 
   User.findById(sUserId)
-        .then(function(user){
+        .then(function(user)
+        {
+
+          if(!user)
+          {
+            return res.json({
+              success: false,
+              passphrase: null
+            });
+          }
+
           var aPassPhrase = getPassphrase(user.passphrase);
-          res.json({
+
+          return res.json({
               success: true,
               passphrase: aPassPhrase.join(" ")
             });
