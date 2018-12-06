@@ -46,8 +46,7 @@ const EmailService =
         const email = oUser.email;
         msg = verificationEmail.buildVerificationEmail({email, code});
         
-        sgMail.send(msg)
-            .then(EmailService.saveVerificationCode({code, oUser}));
+        sgMail.send(msg);
         return true;
     },
 
