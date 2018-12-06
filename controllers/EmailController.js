@@ -11,9 +11,9 @@
 	Date: 05/02/2018
 *********************************************************/
 
-var mongoose = require('mongoose');
-var User = mongoose.model('User');
-var VerificationEmailModel = mongoose.model('VerificationEmail');
+const mongoose = require('mongoose');
+const User = mongoose.model('User');
+const VerificationEmailModel = mongoose.model('VerificationEmail');
 const {sendVerificationEmail, resendVerificationEmail} = require("../services/EmailService");
 
 /**
@@ -26,8 +26,8 @@ const {sendVerificationEmail, resendVerificationEmail} = require("../services/Em
 exports.confirmEmail = function(req, res, next)
 {   
     // Get values from request
-    var code = req.body.code || req.query.code;
-    var sUserId = req.payload.id;
+    const code = req.body.code || req.query.code;
+    const sUserId = req.payload.id;
 
     if( !code )
     {
@@ -58,7 +58,7 @@ exports.confirmEmail = function(req, res, next)
 exports.resendVerificationEmail = function(req, res, next)
 {
     // Get values from request
-    var sUserId = req.payload.id;
+    const sUserId = req.payload.id;
 
     // Find user
     User.findById(sUserId)

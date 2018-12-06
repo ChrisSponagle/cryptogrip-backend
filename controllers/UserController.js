@@ -96,12 +96,18 @@ exports.loginUser = function(req, res, next){
     return res.status(422).json({errors: {password: "can't be blank"}});
   }
 
-  passport.authenticate('local', {session: false}, function(err, user, info){
+  passport.authenticate('local', {session: false}, function(err, oUser, info)
+  {
     if(err){ return next(err); }
 
-    if(user){
-      user.token = user.generateJWT();
-      return res.json({user: user.toAuthJSON()});
+    if(oUser)
+    {
+      // Send verification code for email
+      sendVerificationEmail({oUser});
+
+      // Returns JWT token
+      oUser.token = oUser.generateJWT();
+      return res.json({user: oUser.toAuthJSON()});
     } 
     else {
       return res.status(422).json(info);
