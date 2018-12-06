@@ -49,22 +49,22 @@ exports.createAccount = function(req, res, next)
   oUser.email = email;
   oUser.setPassword(password);
 
-  // Send verification code for email
-  sendVerificationEmail({oUser});
-
-  // Create new Eth account
-  var oAccount = createEthAccount();
-  oUser.address = oAccount.address;
-  oUser.privateKey = oAccount.privateKey
-
-  // Generate passphrase list for user
-  const oPassphrases = getRandomPassphrases(); 
-  var sPassphrases = oPassphrases.indexes.join(' ');
-  oUser.passphrase = sPassphrases;
-
   // Save new user
   oUser.save()
     .then(function(){
+        // Send verification code for email
+      sendVerificationEmail({oUser});
+
+      // Create new Eth account
+      var oAccount = createEthAccount();
+      oUser.address = oAccount.address;
+      oUser.privateKey = oAccount.privateKey
+
+      // Generate passphrase list for user
+      const oPassphrases = getRandomPassphrases(); 
+      var sPassphrases = oPassphrases.indexes.join(' ');
+      oUser.passphrase = sPassphrases;
+      
       return res.json({
         success: true,
         user: oUser.toAuthJSON()
@@ -107,7 +107,10 @@ exports.loginUser = function(req, res, next){
 
       // Returns JWT token
       oUser.token = oUser.generateJWT();
-      return res.json({user: oUser.toAuthJSON()});
+      res.json({user: oUser.toAuthJSON()});
+      oUser.verified = false;
+      oUser.save();
+      return;
     } 
     else {
       return res.status(422).json(info);
@@ -129,24 +132,33 @@ exports.getPassPhrase = function(req, res, next)
   var sUserId = req.payload.id;
 
   User.findById(sUserId)
-        .then(function(user)
-        {
+    .then(function(user)
+    {
 
-          if(!user)
-          {
-            return res.json({
-              success: false,
-              passphrase: null
-            });
-          }
-
-          var aPassPhrase = getPassphrase(user.passphrase);
-
-          return res.json({
-              success: true,
-              passphrase: aPassPhrase.join(" ")
-            });
+      if(!user)
+      {
+        return res.json({
+          success: false,
+          passphrase: null
         });
+      }
+
+      if(!user.verified)
+      {
+        return res.json({
+          success: false,
+          passphrase: null,
+          errors: {message: "User is not fully authenticated."}
+        });
+      }
+
+      var aPassPhrase = getPassphrase(user.passphrase);
+
+      return res.json({
+          success: true,
+          passphrase: aPassPhrase.join(" ")
+        });
+    });
 }
 
 /**
