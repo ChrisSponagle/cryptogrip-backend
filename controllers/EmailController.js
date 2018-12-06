@@ -48,6 +48,48 @@ exports.confirmEmail = function(req, res, next)
         });
 }
 
+exports.confirmEmailUpdate = function(req, res, next)
+{   
+    // Get values from request
+    const code = req.body.code || req.query.code;
+    const email = req.body.email || req.query.email;
+    const sUserId = req.payload.id;
+
+    if( !code )
+    {
+        return res.json({
+                success: false,
+                errors: {code: "field is required."}
+              })
+            .status(400);
+    }
+
+    User.findById(sUserId)
+        .then(function(user){
+            // Validate if code is correct on Database 
+            var pUpdated = getVerificationEmailModel({user, code});
+            pUpdated.then(function(emailModel)
+            {
+                if(!emailModel || emailModel.email !== email ){
+                    return res.json({
+                        success: false,
+                        errors: {message: "Email update not found."}
+                      }); 
+                }
+
+                user.email = emailModel.email;
+                user.save();
+
+                emailModel.verified = true;
+                emailModel.save();
+
+                return res.json({
+                    success: true,
+                  }) ;
+            });
+        });
+}
+
 /**
  * Resend verification code to user's email.
  * 
@@ -59,6 +101,7 @@ exports.resendVerificationEmail = function(req, res, next)
 {
     // Get values from request
     const sUserId = req.payload.id;
+    const email = req.body.email || req.query.email;
 
     // Find user
     User.findById(sUserId)
@@ -78,6 +121,10 @@ exports.resendVerificationEmail = function(req, res, next)
                 }
                 
                 var code = emailVerification.code;
+                if(email){
+                    oUser.email = email;
+                }
+
                 if( !resendVerificationEmail({oUser, code}) )
                 {
                     return res.json({
@@ -182,6 +229,7 @@ const checkCodeIsCorrectUpdate = async function({user, code})
  * @param {String} code
  * @returns {Promise} - Returns a promise that will have the wanted result after checking on database
  */
+const getVerificationEmailModel = 
 exports.getVerificationEmailModel = async function({user, code})
 {
     try {

@@ -17,6 +17,7 @@ var mongoose = require('mongoose');
 var VerificationEmailSchema = new mongoose.Schema({
   code: {type: String, index: true},
   user:  {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+  email: {type: String, default: null},
   verified: {type: Boolean, default: false} 
 }, {timestamps: true});
 
