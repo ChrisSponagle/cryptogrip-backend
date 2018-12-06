@@ -11,8 +11,9 @@
 	Date: 05/02/2018
 *********************************************************/
 
-var mongoose = require('mongoose');
-var User = mongoose.model('User');
+const mongoose = require('mongoose');
+const User = mongoose.model('User');
+const passport = require('passport');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
 const {getRandomPassphrases, getPassphrase} = require("../services/PassphraseService");
@@ -71,6 +72,43 @@ exports.createAccount = function(req, res, next)
     })
     .catch(next);
 }
+
+/**
+ * Login user with the API
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
+exports.loginUser = function(req, res, next){
+
+  // Get values from request
+  var username = req.body.username || req.query.username;
+  var password = req.body.password || req.query.password;
+
+  if(!username)
+  {
+    return res.status(422).json({errors: {username: "can't be blank"}});
+  }
+
+  if(!password)
+  {
+    return res.status(422).json({errors: {password: "can't be blank"}});
+  }
+
+  passport.authenticate('local', {session: false}, function(err, user, info){
+    if(err){ return next(err); }
+
+    if(user){
+      user.token = user.generateJWT();
+      return res.json({user: user.toAuthJSON()});
+    } 
+    else {
+      return res.status(422).json(info);
+    }
+  })(req, res, next);
+}
+
 
 /**
  * Get user's passphrase
