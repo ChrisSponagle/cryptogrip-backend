@@ -1,4 +1,4 @@
-// var mongoose = require('mongoose');
+
 var router = require('express').Router();
 
 var auth = require('../auth');
