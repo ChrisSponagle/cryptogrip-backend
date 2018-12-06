@@ -16,8 +16,9 @@ const User = mongoose.model('User');
 const passport = require('passport');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
-const {getRandomPassphrases, getPassphrase} = require("../services/PassphraseService");
+const {getRandomPassphrases, getPassphrase, checkPassphrase} = require("../services/PassphraseService");
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
+const {getVerificationEmailModel} = require("./EmailController");
 
 /**
  * Register new user account
@@ -120,6 +121,90 @@ exports.loginUser = function(req, res, next){
   })(req, res, next);
 }
 
+/**
+ * Verify if email code and passphrase are correct and mark user as fully 
+ *  authenticated.
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
+exports.verifyUser = function(req, res, next)
+{
+  // Get values from request
+  const code = req.body.code || req.query.code;
+  const inputPassphrase = req.body.passphrase || req.query.passphrase;
+  const sUserId = req.payload.id;
+
+  if( !code ){
+    return res.json({
+      success: false,
+      errors: {code: "field is required."}
+    })
+    .status(400);
+  }
+
+  if(!inputPassphrase){
+    return res.json({
+      success: false,
+      errors: {passphrase: "field is required."}
+    })
+    .status(400);
+  }
+
+  User.findById(sUserId)
+    .then(function(user)
+    {
+      // If user is not found, just return false
+      if( !user )
+      {
+        return res.json({
+          success: false,
+          errors: {message: "User not found"}
+        }).status(422);
+      }
+
+      // Get verification email model
+      const pVerificationEmail = getVerificationEmailModel({user, code});
+      pVerificationEmail
+      .then(function(verificationEmail)
+      {
+          // At this point we have User object and Verification Email object.
+          // it is time to start checking the data
+
+          // Check verification code 
+          if( !verificationEmail ){
+            return res.json({
+              success: false,
+              errors: {message: "Verification Code is not valid"}
+            });
+          }
+          
+          // Check passphrase
+          if( !checkPassphrase(user.passphrase, inputPassphrase) ) 
+          {
+            return res.json({
+              success: false,
+              errors: {message: "Passphrase is not valid"}
+            });
+          }
+          
+          // If we get here, code is correct and passphrase is correct
+          // Great, we can verify user
+          user.verified = true;
+          user.save();
+
+          res.json({
+            success: true,
+          });
+
+          verificationEmail.verified = true;
+          verificationEmail.save()
+
+          return true;
+      });
+    });
+}
 
 /**
  * Get user's passphrase

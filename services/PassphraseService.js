@@ -26,16 +26,39 @@ const PassPhraseService =
     {
         var aIndexes = sIndexes.split(" ");
         var aPassphrase = []
-        aIndexes.forEach(element => {
-            aPassphrase.push(passphrase[element]);
+        aIndexes.forEach(index => {
+            aPassphrase.push(passphrase[index]);
         });
 
         return aPassphrase;
     },
 
-    // TODO: Check if user's passphrase are correct
-    checkPassphrase: function(){
+    /**
+     * Check if passphrase inputed by user is the same saved on database.
+     * 
+     * @param {String} passphrase - User's prassphrase
+     * @param {String} inputPassphrase - Passphrase inputed by user
+     * @returns {Boolean} True: Same passphrase | Faklse: Not the same
+     */
+    checkPassphrase: function(userPassphrase, inputPassphrase)
+    {
+        const aIndexes = userPassphrase.split(" ");
+        const aInputPassPhrase = inputPassphrase.toLowerCase().split(" ");
+        var count = 0;
+        var bValidWords = true;
 
+        aIndexes.forEach(index => {
+            // Get passphrase from list
+            var sWord = passphrase[index];
+
+            // Compare with passprase entered by user
+            if(sWord !== aInputPassPhrase[count]){
+                bValidWords = false;
+            }
+            count++;
+        });
+
+        return bValidWords;
     },
 
     /**

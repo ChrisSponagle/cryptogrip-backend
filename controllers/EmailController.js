@@ -41,7 +41,7 @@ exports.confirmEmail = function(req, res, next)
     User.findById(sUserId)
         .then(function(user){
             // Validate if code is correct on Database 
-            var pUpdated = checkCodeIsCorrect({user, code});
+            var pUpdated = checkCodeIsCorrectUpdate({user, code});
             pUpdated.then(function(iCodeResponse){
                 validateResponse({iCodeResponse, res, user});
             });
@@ -144,7 +144,7 @@ const validateResponse = function({res, iCodeResponse, user})
  * @returns {Promise} - Returns a promise that will have the wanted result after checking on database
  * @returns {int} -2: No possible to update data, -1: Code is wrong or already verified, 1: Success
  */
-const checkCodeIsCorrect = async function({user, code})
+const checkCodeIsCorrectUpdate = async function({user, code})
 {
     try {
         const updated = await new Promise( ( resolve, reject ) => {
@@ -172,5 +172,41 @@ const checkCodeIsCorrect = async function({user, code})
         });
 
         return updated;
+    }catch(err){};
+}
+
+/**
+ * Check if email verification code is correct or not
+ * 
+ * @param {User} user
+ * @param {String} code
+ * @returns {Promise} - Returns a promise that will have the wanted result after checking on database
+ */
+exports.getVerificationEmailModel = async function({user, code})
+{
+    try {
+        const verificationEmail = await new Promise( ( resolve, reject ) => {
+            VerificationEmailModel.findOne( 
+                // Conditions
+                {user: user, code: code, verified: false}, 
+                // Get document
+                (err, doc) => 
+                {
+                    if (err) {
+                        console.log("Something wrong when updating data!");
+                        reject( err );
+                    }
+                    
+                    // If there is no document, it means the code is wrong or it have already been verified
+                    if( !doc ){
+                        resolve( null );
+                    }
+
+                    // Found it and the code is correct
+                    resolve( doc );
+            });
+        });
+
+        return verificationEmail;
     }catch(err){};
 }

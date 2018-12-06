@@ -12,7 +12,7 @@ router.post('/api/user', UserController.createAccount);
 router.put('/api/user/verify/email', auth.required, EmailController.confirmEmail);
 
 // Verify user's email and passphrase
-router.put('/api/user/verify', auth.required, EmailController.confirmEmail);
+router.put('/api/user/verify', auth.required, UserController.verifyUser);
 
 // Resend user's verification email code
 router.post('/api/user/verify/email/send', auth.required, EmailController.resendVerificationEmail);
