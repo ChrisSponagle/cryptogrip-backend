@@ -22,11 +22,27 @@ const EmailService =
     /**
      * Send verification email with new code
      * 
-     * @param {String} email 
+     * @param {User} oUser 
      */
     sendVerificationEmail: function({oUser})
     {
         const code = Math.floor(Math.random() * 90000) + 10000;       
+        const email = oUser.email;
+        msg = verificationEmail.buildVerificationEmail({email, code});
+        
+        sgMail.send(msg)
+            .then(EmailService.saveVerificationCode({code, oUser}));
+        return true;
+    },
+
+    /**
+     * Resend verification email to user's email
+     * 
+     * @param {User} oUser 
+     * @param {String} code
+     */
+    resendVerificationEmail: function({oUser, code})
+    {
         const email = oUser.email;
         msg = verificationEmail.buildVerificationEmail({email, code});
         

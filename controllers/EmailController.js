@@ -14,7 +14,7 @@
 var mongoose = require('mongoose');
 var User = mongoose.model('User');
 var VerificationEmailModel = mongoose.model('VerificationEmail');
-const {sendVerificationEmail} = require("../services/EmailService");
+const {sendVerificationEmail, resendVerificationEmail} = require("../services/EmailService");
 
 /**
  * Register new user account
@@ -44,6 +44,52 @@ exports.confirmEmail = function(req, res, next)
             var pUpdated = checkCodeIsCorrect({user, code});
             pUpdated.then(function(iCodeResponse){
                 validateResponse({iCodeResponse, res, user});
+            });
+        });
+}
+
+/**
+ * Resend verification code to user's email.
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
+exports.resendVerificationEmail = function(req, res, next)
+{
+    // Get values from request
+    var sUserId = req.payload.id;
+
+    // Find user
+    User.findById(sUserId)
+        .then(function(oUser){
+            // Find verification email
+            VerificationEmailModel.findOne( {user: oUser, verified: false}, {},  { sort: { 'created_at' : -1 } } )
+            .then(function(emailVerification){
+                
+                // If there is no verification code, return false
+                if( !emailVerification )
+                {
+                    return res.json({
+                        success: false,
+                        errors: {message: "Verification code not found."}
+                      })
+                    .status(400);
+                }
+                
+                var code = emailVerification.code;
+                if( !resendVerificationEmail({oUser, code}) )
+                {
+                    return res.json({
+                        success: false,
+                        errors: {message: "Some error happened."}
+                      })
+                    .status(500);
+                }
+
+                return res.json({
+                    success: true,
+                  });
             });
         });
 }

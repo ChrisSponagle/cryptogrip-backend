@@ -92,7 +92,6 @@ exports.getPassPhrase = function(req, res, next)
               passphrase: aPassPhrase.join(" ")
             });
         });
-
 }
 
 /**
