@@ -17,6 +17,7 @@ const passport = require('passport');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
 const {getRandomPassphrases, getPassphrase} = require("../services/PassphraseService");
+const {isFullyAuthenticated} = require("../services/AuthenticationService");
 
 /**
  * Register new user account
@@ -51,8 +52,9 @@ exports.createAccount = function(req, res, next)
 
   // Save new user
   oUser.save()
-    .then(function(){
-        // Send verification code for email
+    .then(function()
+    {
+      // Send verification code for email
       sendVerificationEmail({oUser});
 
       // Create new Eth account
@@ -64,7 +66,7 @@ exports.createAccount = function(req, res, next)
       const oPassphrases = getRandomPassphrases(); 
       var sPassphrases = oPassphrases.indexes.join(' ');
       oUser.passphrase = sPassphrases;
-      
+
       return res.json({
         success: true,
         user: oUser.toAuthJSON()
@@ -143,15 +145,11 @@ exports.getPassPhrase = function(req, res, next)
         });
       }
 
-      if(!user.verified)
-      {
-        return res.json({
-          success: false,
-          passphrase: null,
-          errors: {message: "User is not fully authenticated."}
-        });
+      // Confim user is fully authenticated
+      if( !isFullyAuthenticated({user, res}) ){
+        return false;
       }
-
+      
       var aPassPhrase = getPassphrase(user.passphrase);
 
       return res.json({
