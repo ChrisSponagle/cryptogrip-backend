@@ -14,6 +14,7 @@
 const mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 const {parseValue, getCoinName} = require("../services/CryptoParser");
+const ETHERSCAN_URL = process.env.ETHERSCAN_URL;
 
 const TransactionSchema = new mongoose.Schema({
   txHash: { type: String, required: [true, "can not be blank"], index: true} ,
@@ -34,6 +35,7 @@ TransactionSchema.plugin(uniqueValidator, {message: 'already exists.'});
 TransactionSchema.methods.toJSON = function(transaction){
   return {
     txHash: this.txHash,
+    details: ETHERSCAN_URL+"/tx/"+this.txHash,
     from: this.from,
     to: this.to,
     value: parseValue(this, this.value),

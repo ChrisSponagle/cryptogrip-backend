@@ -30,7 +30,7 @@ exports.getUserTransactionsHistory = function(req, res, next)
       {
         return res.json({
           success: false,
-          passphrase: null
+          errors: {message: "No user found."}
         });
       }
 
@@ -50,7 +50,6 @@ exports.getUserTransactionsHistory = function(req, res, next)
           pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
           pParsedDbTransactions.then(function(dbTransactions)
           {
-            console.log(dbTransactions);
             return res.json({"success": true,
                              "transactions": dbTransactions});
           });
