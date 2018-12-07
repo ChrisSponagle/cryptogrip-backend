@@ -24,9 +24,16 @@ const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokentx&contractaddress="
 
 const TransactionHistoryService = 
 {   
-
-    getTransactionsByAccount: async function (accountNo) 
+	/**
+	 * Get transactions of account on EtherScanIo
+	 * 
+	 * @param {String} accountNo 
+	 */
+    getTransactionsFromEtherScanByAccount: async function (accountNo) 
     {
+		// Parse account to lower case
+		accountNo = accountNo.toLowerCase();
+
         return axios.all([
 			axios.get(ETH_URL+accountNo),
 			axios.get(INCO_URL+accountNo)
@@ -52,10 +59,44 @@ const TransactionHistoryService =
 			  return aParsetTransactions;
 		  }))
 		  .catch(function(e){
+			  console.log("Not possible to get transactions from EtherScan");
 			  console.log(e);
+			  return null;
 		  });
 	},
+
+	/**
+	 * Get transactions from database
+	 * 
+	 * @param {String} accountNo 
+	 */
+	getTransactionsFromDbByAccount: function(accountNo)
+	{
+		// Parse account to lower case
+		accountNo = accountNo.toLowerCase();
+
+		return Transaction
+		.find()
+		.or([{to: accountNo},  {from:accountNo} ])
+		.sort({timestamp: -1})
+		.then(transactions => {
+				var aTransactions = [];
+
+				transactions.forEach(element => {
+					aTransactions.push(element.toJSON());
+				});
+				return aTransactions;
+		})
+		.catch(error => { 
+			console.log("Error when trying to get transactions from DB: " + error) 
+		});
+	},
 	
+	/**
+	 * Parse transactions from EtherScan to a way that the
+	 * 	front-end will understand
+	 * @param {Array} transactions 
+	 */
 	parseTransactions: function(transactions)
 	{
 		var aTransactions = [];
@@ -64,16 +105,16 @@ const TransactionHistoryService =
 		transactions
 		// Sort elements in desc order
 		.sort(function(a, b) {
-			return a.timeStamp - b.timeStamp;
+			return b.timeStamp - a.timeStamp;
 		}).
 		// Create new elements
 		forEach(element => 
 		{
 			var oTransaction = new Transaction();
 
-			oTransaction.txHash = element.hash;
-			oTransaction.from = element.from;
-  			oTransaction.to = element.to;
+			oTransaction.txHash = element.hash.toLowerCase();
+			oTransaction.from = element.from.toLowerCase();
+  			oTransaction.to = element.to.toLowerCase();
   			oTransaction.value = element.value;
   			oTransaction.blockNumber = element.blockNumber;
   			oTransaction.gas = element.gas;
@@ -81,13 +122,17 @@ const TransactionHistoryService =
 			oTransaction.timestamp = element.timeStamp;
 			
 			if(element.contractAddress != ""){
-				oTransaction.contractAddress = element.contractAddress;
+				oTransaction.contractAddress = element.contractAddress.toLowerCase();
 			}
 			
 			aSaveTransactions.push(oTransaction);
 			aTransactions.push(oTransaction.toJSON());
 		});
+
+		// Save transactions on Mongo asynchronously 
 		TransactionHistoryService.saveTransactions(aSaveTransactions);
+
+		// Return parsed transactions
 		return aTransactions;
 	},
 

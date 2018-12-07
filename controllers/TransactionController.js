@@ -15,7 +15,7 @@
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
-const {getTransactionsByAccount} = require("../services/TransactionHistoryService");
+const {getTransactionsFromEtherScanByAccount, getTransactionsFromDbByAccount} = require("../services/TransactionHistoryService");
 
 exports.getUserTransactionsHistory = function(req, res, next)
 {
@@ -40,10 +40,28 @@ exports.getUserTransactionsHistory = function(req, res, next)
       }
 
       // Get transactions already parsed
-      var pParsedTransactions = getTransactionsByAccount(user.address);
-      pParsedTransactions.then(function(transactions){
-        return res.json({"success": true,
+      var pParsedTransactions = getTransactionsFromEtherScanByAccount(user.address);
+      pParsedTransactions.then(function(transactions)
+      {
+        
+        // If it is not possible to get transactions from EtherScan get it from our database
+        if( !transactions )
+        {
+          console.log("No transactions");
+          pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
+          console.log(pParsedDbTransactions);
+          pParsedDbTransactions.then(function(dbTransactions)
+          {
+            console.log(dbTransactions);
+            return res.json({"success": true,
+                             "transactions": dbTransactions});
+          });
+        }
+        else{
+            return res.json({"success": true,
                         "transactions": transactions});  
+        }
+        
       });
     });
 }
