@@ -10,7 +10,7 @@ var http = require('http'),
     mongoose = require('mongoose'),
     dotenv = require("dotenv").config({ path: "./config/.env" });
 
-var isProduction = process.env.NODE_ENV === 'production';
+var isProduction = process.env.PRODUCTION == 1;
 
 // Create global app object
 var app = express();
@@ -33,7 +33,7 @@ if (!isProduction) {
 
 mongoose.set('useCreateIndex', true);
 if(isProduction){
-  mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true });
+  mongoose.connect(process.env.MONGODB_URL, { useNewUrlParser: true });
 } 
 else {
   mongoose.connect('mongodb://localhost/ether_wallet', { useNewUrlParser: true });
