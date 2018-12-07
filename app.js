@@ -42,6 +42,7 @@ else {
 
 require('./models/User');
 require('./models/VerificationEmail');
+require('./models/Transaction');
 require('./config/passport');
 
 app.use(require('./routes'));

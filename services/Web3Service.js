@@ -8,11 +8,12 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/02/2018
+	Date: 05/12/2018
 *********************************************************/
 
-var Web3 = require('web3');
-var web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
+const Web3 = require('web3');
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
+
 
 const Web3Service = 
 {   
@@ -26,7 +27,7 @@ const Web3Service =
         return account;
     },
 
-    getTransactionsByAccount: async function (accountNo, startBlockNumber, endBlockNumber) 
+    getTransactionsFromBlockChain: async function (accountNo, startBlockNumber, endBlockNumber)
     {
         // const 
         const latest = await web3.eth.getBlockNumber();
@@ -37,19 +38,19 @@ const Web3Service =
         //   console.log("Using endBlockNumber: " + endBlockNumber);
         // }
         endBlockNumber = latest;
-        startBlockNumber = endBlockNumber-2000;
+        startBlockNumber = endBlockNumber-1000;
         // if (startBlockNumber == null) {
         //   startBlockNumber = endBlockNumber - 1000;
         //   console.log("Using startBlockNumber: " + startBlockNumber);
         // }
         console.log("Searching for transactions to/from account \"" + accountNo + "\" within blocks "  + startBlockNumber + " and " + endBlockNumber);
-      
+        
         for (var i = startBlockNumber; i <= endBlockNumber; i++) {
-          if (i % 1000 == 0) {
+            if (i % 1000 == 0) {
             console.log("Searching block " + i);
-          }
-          var block = web3.eth.getBlock(i, true);
-          block.then(function(block){
+            }
+            var block = web3.eth.getBlock(i, true);
+            block.then(function(block){
             if (block != null && block.transactions != null) 
             {
                 block.transactions.forEach( function(e) 
@@ -70,9 +71,9 @@ const Web3Service =
                 }
                 });
             }
-          });
+            });
         }
-      }
+    },
 }
 
 module.exports = Web3Service; 

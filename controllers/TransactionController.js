@@ -15,7 +15,7 @@
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
-const {getTransactionsByAccount} = require("../services/Web3Service");
+const {getTransactionsByAccount} = require("../services/TransactionHistoryService");
 
 exports.getUserTransactionsHistory = function(req, res, next)
 {
@@ -39,9 +39,11 @@ exports.getUserTransactionsHistory = function(req, res, next)
         return false;
       }
 
-    //   getTransactionsByAccount(user.address, 4575950, 4575952);
-      getTransactionsByAccount(0x639d8C75662d9413E1339a939eA91c3c01BfAb70);
-      
-      return res.json("Thanks");  
+      // Get transactions already parsed
+      var pParsedTransactions = getTransactionsByAccount(user.address);
+      pParsedTransactions.then(function(transactions){
+        return res.json({"success": true,
+                        "transactions": transactions});  
+      });
     });
 }

@@ -8,16 +8,16 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/02/2018
+	Date: 05/12/2018
 *********************************************************/
 
-var mongoose = require('mongoose');
-var uniqueValidator = require('mongoose-unique-validator');
-var jwt = require('jsonwebtoken');
-var secret = require('../config').secret;
+const mongoose = require('mongoose');
+const uniqueValidator = require('mongoose-unique-validator');
+const jwt = require('jsonwebtoken');
+const secret = require('../config').secret;
 const bcrypt = require('bcrypt');
 
-var UserSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
   username: {type: String, unique: true, required: [true, "can not be blank"], match: [/^[a-zA-Z0-9]+$/, 'is invalid'], index: true},
   email: {type: String, lowercase: true, unique: true, required: [true, "can not be blank"], match: [/\S+@\S+\.\S+/, 'is invalid'], index: true},
   password: {
