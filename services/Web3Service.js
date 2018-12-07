@@ -24,7 +24,55 @@ const Web3Service =
     createEthAccount: function(){
         var account = web3.eth.accounts.create();
         return account;
-    }
+    },
+
+    getTransactionsByAccount: async function (accountNo, startBlockNumber, endBlockNumber) 
+    {
+        // const 
+        const latest = await web3.eth.getBlockNumber();
+        // console.log("Lastest block:", latest);
+        // console.log(web3.eth.blockNumber)
+        // if (endBlockNumber == null) {
+        //   endBlockNumber = web3.eth.blockNumber;
+        //   console.log("Using endBlockNumber: " + endBlockNumber);
+        // }
+        endBlockNumber = latest;
+        startBlockNumber = endBlockNumber-2000;
+        // if (startBlockNumber == null) {
+        //   startBlockNumber = endBlockNumber - 1000;
+        //   console.log("Using startBlockNumber: " + startBlockNumber);
+        // }
+        console.log("Searching for transactions to/from account \"" + accountNo + "\" within blocks "  + startBlockNumber + " and " + endBlockNumber);
+      
+        for (var i = startBlockNumber; i <= endBlockNumber; i++) {
+          if (i % 1000 == 0) {
+            console.log("Searching block " + i);
+          }
+          var block = web3.eth.getBlock(i, true);
+          block.then(function(block){
+            if (block != null && block.transactions != null) 
+            {
+                block.transactions.forEach( function(e) 
+                {
+                if (accountNo == "*" || accountNo == e.from || accountNo == e.to) {
+                    console.log("  tx hash          : " + e.hash + "\n"
+                    + "   nonce           : " + e.nonce + "\n"
+                    + "   blockHash       : " + e.blockHash + "\n"
+                    + "   blockNumber     : " + e.blockNumber + "\n"
+                    + "   transactionIndex: " + e.transactionIndex + "\n"
+                    + "   from            : " + e.from + "\n" 
+                    + "   to              : " + e.to + "\n"
+                    + "   value           : " + e.value + "\n"
+                    + "   time            : " + block.timestamp + " " + new Date(block.timestamp * 1000).toGMTString() + "\n"
+                    + "   gasPrice        : " + e.gasPrice + "\n"
+                    + "   gas             : " + e.gas + "\n"
+                    + "   input           : " + e.input);
+                }
+                });
+            }
+          });
+        }
+      }
 }
 
 module.exports = Web3Service; 
