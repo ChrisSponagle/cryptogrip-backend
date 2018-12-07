@@ -47,9 +47,7 @@ exports.getUserTransactionsHistory = function(req, res, next)
         // If it is not possible to get transactions from EtherScan get it from our database
         if( !transactions )
         {
-          console.log("No transactions");
           pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
-          console.log(pParsedDbTransactions);
           pParsedDbTransactions.then(function(dbTransactions)
           {
             console.log(dbTransactions);
