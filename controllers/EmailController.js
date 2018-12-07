@@ -14,7 +14,7 @@
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const VerificationEmailModel = mongoose.model('VerificationEmail');
-const {sendVerificationEmail, resendVerificationEmail} = require("../services/EmailService");
+const {resendVerificationEmail} = require("../services/EmailService");
 
 /**
  * Register new user account
@@ -48,6 +48,13 @@ exports.confirmEmail = function(req, res, next)
         });
 }
 
+/**
+ * Conf update of email
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
 exports.confirmEmailUpdate = function(req, res, next)
 {   
     // Get values from request

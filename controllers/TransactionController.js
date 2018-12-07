@@ -16,7 +16,48 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getTransactionsFromEtherScanByAccount, getTransactionsFromDbByAccount} = require("../services/TransactionHistoryService");
+const {getAccountEthBalance} = require("../services/Web3Service");
 
+/**
+ * Get balance of user's account
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
+exports.getUserBalance = function(req, res, next)
+{
+  // Get values from request
+  const sUserId = req.payload.id;
+
+  User.findById(sUserId)
+  .then(function(user)
+  {
+
+    if(!user)
+    {
+      return res.json({
+        success: false,
+        errors: {message: "No user found."}
+      });
+    }
+
+    // Confim user is fully authenticated
+    if( !isFullyAuthenticated({user, res}) ){
+      return false;
+    }
+
+    getAccountEthBalance(user.address);
+  });
+}
+
+/**
+ * Get transaction history of user account
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
 exports.getUserTransactionsHistory = function(req, res, next)
 {
     // Get values from request
@@ -43,7 +84,6 @@ exports.getUserTransactionsHistory = function(req, res, next)
       var pParsedTransactions = getTransactionsFromEtherScanByAccount(user.address);
       pParsedTransactions.then(function(transactions)
       {
-        
         // If it is not possible to get transactions from EtherScan get it from our database
         if( !transactions )
         {
@@ -58,7 +98,6 @@ exports.getUserTransactionsHistory = function(req, res, next)
             return res.json({"success": true,
                         "transactions": transactions});  
         }
-        
       });
     });
 }

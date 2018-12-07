@@ -27,52 +27,59 @@ const Web3Service =
         return account;
     },
 
+    getAccountEthBalance: function(accountNo)
+    {
+        accountNo = accountNo.toLowerCase();
+        web3.eth.getBalance(accountNo)
+        .then(console.log);
+    },
+
     getTransactionsFromBlockChain: async function (accountNo, startBlockNumber, endBlockNumber)
     {
         // const 
-        const latest = await web3.eth.getBlockNumber();
+        // const latest = await web3.eth.getBlockNumber();
         // console.log("Lastest block:", latest);
         // console.log(web3.eth.blockNumber)
         // if (endBlockNumber == null) {
         //   endBlockNumber = web3.eth.blockNumber;
         //   console.log("Using endBlockNumber: " + endBlockNumber);
         // }
-        endBlockNumber = latest;
-        startBlockNumber = endBlockNumber-1000;
+        // endBlockNumber = latest;
+        // startBlockNumber = endBlockNumber-1000;
         // if (startBlockNumber == null) {
         //   startBlockNumber = endBlockNumber - 1000;
         //   console.log("Using startBlockNumber: " + startBlockNumber);
         // }
-        console.log("Searching for transactions to/from account \"" + accountNo + "\" within blocks "  + startBlockNumber + " and " + endBlockNumber);
+        // console.log("Searching for transactions to/from account \"" + accountNo + "\" within blocks "  + startBlockNumber + " and " + endBlockNumber);
         
-        for (var i = startBlockNumber; i <= endBlockNumber; i++) {
-            if (i % 1000 == 0) {
-            console.log("Searching block " + i);
-            }
-            var block = web3.eth.getBlock(i, true);
-            block.then(function(block){
-            if (block != null && block.transactions != null) 
-            {
-                block.transactions.forEach( function(e) 
-                {
-                if (accountNo == "*" || accountNo == e.from || accountNo == e.to) {
-                    console.log("  tx hash          : " + e.hash + "\n"
-                    + "   nonce           : " + e.nonce + "\n"
-                    + "   blockHash       : " + e.blockHash + "\n"
-                    + "   blockNumber     : " + e.blockNumber + "\n"
-                    + "   transactionIndex: " + e.transactionIndex + "\n"
-                    + "   from            : " + e.from + "\n" 
-                    + "   to              : " + e.to + "\n"
-                    + "   value           : " + e.value + "\n"
-                    + "   time            : " + block.timestamp + " " + new Date(block.timestamp * 1000).toGMTString() + "\n"
-                    + "   gasPrice        : " + e.gasPrice + "\n"
-                    + "   gas             : " + e.gas + "\n"
-                    + "   input           : " + e.input);
-                }
-                });
-            }
-            });
-        }
+        // for (var i = startBlockNumber; i <= endBlockNumber; i++) {
+        //     if (i % 1000 == 0) {
+        //     console.log("Searching block " + i);
+        //     }
+        //     var block = web3.eth.getBlock(i, true);
+        //     block.then(function(block){
+        //     if (block != null && block.transactions != null) 
+        //     {
+        //         block.transactions.forEach( function(e) 
+        //         {
+        //         if (accountNo == "*" || accountNo == e.from || accountNo == e.to) {
+        //             console.log("  tx hash          : " + e.hash + "\n"
+        //             + "   nonce           : " + e.nonce + "\n"
+        //             + "   blockHash       : " + e.blockHash + "\n"
+        //             + "   blockNumber     : " + e.blockNumber + "\n"
+        //             + "   transactionIndex: " + e.transactionIndex + "\n"
+        //             + "   from            : " + e.from + "\n" 
+        //             + "   to              : " + e.to + "\n"
+        //             + "   value           : " + e.value + "\n"
+        //             + "   time            : " + block.timestamp + " " + new Date(block.timestamp * 1000).toGMTString() + "\n"
+        //             + "   gasPrice        : " + e.gasPrice + "\n"
+        //             + "   gas             : " + e.gas + "\n"
+        //             + "   input           : " + e.input);
+        //         }
+        //         });
+        //     }
+        //     });
+        // }
     },
 }
 
