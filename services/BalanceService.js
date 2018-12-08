@@ -74,9 +74,14 @@ const BalanceService =
 		// Create new elements
 		.forEach(balance => 
 		{
+            var balanceValue = parseValue(balance, balance.result);
+            if(isNaN(balanceValue)){
+                balanceValue = 0;
+            }
+            
             oBalance = {
                 coin: getCoinName(balance),
-                balance: parseValue(balance, balance.result)
+                balance: balanceValue
             }
 			
 			aBalances.push(oBalance);
