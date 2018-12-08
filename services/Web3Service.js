@@ -27,7 +27,8 @@ const Web3Service =
         return account;
     },
 
-    getAccountEthBalance: function(accountNo)
+    //TODO: Get balance from blockchian based on contract address and account address
+    getAccountBalance: function(accountNo, contractAddress = null)
     {
         accountNo = accountNo.toLowerCase();
         web3.eth.getBalance(accountNo)

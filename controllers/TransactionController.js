@@ -16,7 +16,7 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getTransactionsFromEtherScanByAccount, getTransactionsFromDbByAccount} = require("../services/TransactionHistoryService");
-const {getAccountEthBalance} = require("../services/Web3Service");
+const {getBalanceFromEtherScanByAccount, getBalanceFromBlockChain} = require("../services/BalanceService");
 
 /**
  * Get balance of user's account
@@ -47,7 +47,27 @@ exports.getUserBalance = function(req, res, next)
       return false;
     }
 
-    getAccountEthBalance(user.address);
+     // Get transactions already parsed
+     var pParsedBalance = getBalanceFromEtherScanByAccount(user.address);
+     pParsedBalance.then(function(balances)
+     {
+       // If it is not possible to get transactions from EtherScan get it from our database
+       if( !balances )
+       {
+         
+        pParsedBalance = getBalanceFromBlockChain(user.address);
+        pParsedBalance.then(function(blockChainBalance)
+         {
+           return res.json({"success": true,
+                            "balance": blockChainBalance});
+         });
+       }
+       else{
+           return res.json({"success": true,
+                       "balance": balances});  
+       }
+     });
+    
   });
 }
 
