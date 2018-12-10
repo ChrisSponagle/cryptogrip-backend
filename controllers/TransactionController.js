@@ -17,6 +17,67 @@ const User = mongoose.model('User');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getTransactionsFromEtherScanByAccount, getTransactionsFromDbByAccount} = require("../services/TransactionHistoryService");
 const {getBalanceFromEtherScanByAccount, getBalanceFromBlockChain} = require("../services/BalanceService");
+const {sendCoin} = require("../services/Web3Service");
+
+/**
+ * Get balance of user's account
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+ */
+exports.sendCoin = function(req, res, next)
+{
+  // Get values from request
+  const sUserId = req.payload.id;
+  const coin = req.body.coin || req.query.coin;
+  const amount = req.body.amount || req.query.amount;
+  const wallet = req.body.wallet || req.query.wallet;
+
+  // Validate input values
+  var aErrors = checkSendMandatoryFields({coin, amount, wallet});
+  if( Object.keys(aErrors).length ){
+    return res.json({
+      success: false,
+      errors: aErrors
+    })
+    .status(422);
+  }
+
+  User.findById(sUserId)
+    .then(function(user)
+    {
+      // If user is not found, just return false
+      if( !user )
+      {
+        return res.json({
+          success: false,
+          errors: {message: "User not found"}
+        }).status(422);
+      }
+
+      if( user.address.toLowerCase() == wallet.toLowerCase() )
+      {
+        return res.json({
+          success: false,
+          errors: {message: "Can not send coin to same address"}
+        }).status(422);
+      }
+      
+      const pSendCoin = sendCoin({user, coin, wallet, amount}, res);
+      pSendCoin
+      .then(function(err){
+        if(err && err.errors)
+        {
+          return res.json({
+            success: false,
+            errors: err.errors
+          });
+        }
+      });
+
+    });
+}
 
 /**
  * Get balance of user's account
@@ -51,21 +112,22 @@ exports.getUserBalance = function(req, res, next)
      var pParsedBalance = getBalanceFromEtherScanByAccount(user.address);
      pParsedBalance.then(function(balances)
      {
-       // If it is not possible to get transactions from EtherScan get it from our database
-       if( !balances )
-       {
+       // If it is not possible to get balance from EtherScan get it from blockchain
+       //TODO: Get balance from blockchain
+      //  if( !balances )
+      //  {
          
-        pParsedBalance = getBalanceFromBlockChain(user.address);
-        pParsedBalance.then(function(blockChainBalance)
-         {
+      //   pParsedBalance = getBalanceFromBlockChain(user.address);
+      //   pParsedBalance.then(function(blockChainBalance)
+      //    {
+      //      return res.json({"success": true,
+      //                       "balance": blockChainBalance});
+      //    });
+      //  }
+      //  else{
            return res.json({"success": true,
-                            "balance": blockChainBalance});
-         });
-       }
-       else{
-           return res.json({"success": true,
-                       "balance": balances});  
-       }
+                            "balance": balances});  
+      //  }
      });
     
   });
@@ -110,14 +172,38 @@ exports.getUserTransactionsHistory = function(req, res, next)
           pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
           pParsedDbTransactions.then(function(dbTransactions)
           {
-            return res.json({"success": true,
-                             "transactions": dbTransactions});
+            return res.json({success: true,
+                             transactions: dbTransactions});
           });
         }
         else{
-            return res.json({"success": true,
-                        "transactions": transactions});  
+            return res.json({success: true,
+                             transactions: transactions});  
         }
       });
     });
+}
+
+
+/**
+ * Check if mandatory fields are present on request or not.
+ * 
+ * @param {coin, value, wallet}
+ * @returns Object
+*/
+const checkSendMandatoryFields = function({coin, amount, wallet})
+{
+  var aErors = {};
+
+  if( !coin ){
+    aErors.coin = "can not be blank";
+  }
+  if ( !amount){
+    aErors.amount = "can not be blank";
+  }
+  if( !wallet ){
+    aErors.wallet = "can not be blank";
+  }
+
+  return aErors;
 }

@@ -56,6 +56,8 @@ const BalanceService =
 		  });
     },
 
+	// TODO: Get balance from blockchain
+	// this function will be used when EtherScan fails
     getBalanceFromBlockChain : async function (accountNo) 
     {
 
