@@ -3,6 +3,9 @@ var router = require('express').Router();
 router.use(require('./users'));
 router.use(require('./transactions'));
 
+//TODO: Remove next line after Incodium event
+router.use(require('./special'));
+
 router.use(function(err, req, res, next){
   if(err.name === 'ValidationError'){
     return res.status(422).json({

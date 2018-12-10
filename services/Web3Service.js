@@ -102,7 +102,7 @@ const Web3Service =
         var gasPrice = new BigNumber(gasPriceGlobal);
         
         // Calculate amount in Ether value
-        var calculatedAmount = amount * (10 ** 18);
+        var calculatedAmount = amount * (10 ** INCO_DECIMALS);
 
         if ( gasPrice.isLessThan(gasPriceWeb3) )
         {

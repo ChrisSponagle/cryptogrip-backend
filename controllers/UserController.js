@@ -355,6 +355,24 @@ exports.updateEmail = function(req, res, next)
 }
 
 /**
+ * TODO: Remove after Incodium event
+ * Get list of accounts created ordered by creation date desc
+ */
+exports.getAccounts = function(req, res, next)
+{
+  User.find({}, null, {sort: '-createdAt'}, function(err, docs) { 
+    var aAccounts = [];
+    docs.forEach( account => {
+      var oAccount = {};
+      oAccount.wallet = account.address;
+      oAccount.createdAt = account.createdAt;
+      aAccounts.push(oAccount);
+    });
+    res.json(aAccounts);
+  });
+}
+
+/**
  * Check if mandatory fields are present on request or not.
  * 
  * @param {username, email, password}
