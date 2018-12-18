@@ -59,7 +59,9 @@ UserSchema.methods.setPassword = function(password){
 UserSchema.methods.generateJWT = function() {
   var today = new Date();
   var exp = new Date(today);
-  exp.setDate(today.getDate() + 60);
+  // JWT expires in 1 hour
+  var hour = 3600000;
+  exp.setTime(today.getTime() - hour); 
 
   return jwt.sign({
     id: this._id,
