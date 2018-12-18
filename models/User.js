@@ -61,7 +61,7 @@ UserSchema.methods.generateJWT = function() {
   var exp = new Date(today);
   // JWT expires in 1 hour
   var hour = 3600000;
-  exp.setTime(today.getTime() - hour); 
+  exp.setTime(today.getTime() + hour); 
 
   return jwt.sign({
     id: this._id,
