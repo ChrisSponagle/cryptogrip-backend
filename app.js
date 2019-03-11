@@ -8,7 +8,10 @@ var http = require('http'),
     passport = require('passport'),
     errorhandler = require('errorhandler'),
     mongoose = require('mongoose'),
-    dotenv = require("dotenv").config({ path: "./config/.env" });
+    dotenv = require("dotenv").config({ path: "./config/.env" }),
+    crypto = require('crypto');
+    flash = require('express-flash');
+
 
 var isProduction = process.env.PRODUCTION == 1;
 
@@ -43,6 +46,7 @@ else {
 require('./models/User');
 require('./models/VerificationEmail');
 require('./models/Transaction');
+require('./models/Recovery');
 require('./config/passport');
 
 app.use(require('./routes'));

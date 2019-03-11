@@ -13,12 +13,17 @@
 
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const Recovery = mongoose.model('Recovery');
 const passport = require('passport');
+const crypto = require('crypto');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
 const {getRandomPassphrases, getPassphrase, checkPassphrase} = require("../services/PassphraseService");
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getVerificationEmailModel} = require("./EmailController");
+// const {generateToken} = require("../services/RecoveryService");
+const {recoveryEmail} = require("../services/RecoveryService");
+const flash = require('express-flash');
 
 /**
  * Register new user account
@@ -346,7 +351,7 @@ exports.updateEmail = function(req, res, next)
         const oUser = user;
         
         // Send verification code for new email
-        sendVerificationEmail({oUser, newEmail});        
+        sendVerificationEmail({oUser, newEmail}); 
 
         return res.json({
           success: true,
@@ -394,3 +399,185 @@ const checkMandatoryFields = function({username, email, password})
 
   return aErors;
 }
+
+/**
+ * Check if email field is present on request or not.
+ * 
+ * @param {email}
+ * @returns Object
+*/
+const checkEmailField = function({email})
+{
+  var aErors = {};
+
+  if ( !email ){
+    aErors.email = "can not be blank";
+  }
+
+  return aErors;
+}
+
+/**
+ * Forget Password
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.forgetPassword = (req, res, next) => {
+  User.findOne({ email: req.body.email || req.query.email }, (err, user) => {
+    if (!user) {
+      flash('error', 'No account with that email address exists.');
+      return res.redirect('/recovery')
+    }
+  })
+  .then(user => {
+    crypto.randomBytes(20, async (err, buf) => {
+      const token = buf.toString('hex');
+      const requestUser = new Recovery({
+        userId: user._id,
+        email: user.email,
+        // password: user.password,
+        resetPasswordToken: token,
+        resetPasswordExpires: Date.now() + 3600000  // expires in 1 hour
+      });
+      // await requestUser.collection.dropIndex('email_1');
+      await requestUser.save();
+
+      const sEmail = requestUser.email;
+      const sHost = req.headers.host;
+      const sToken = requestUser.resetPasswordToken;
+      await recoveryEmail({sEmail, sHost, sToken});
+    })
+  })
+  .then(() => {
+    flash('success', 'Recovery email has been sent!');
+    res.status(200).json({
+      message: "EMAIL SENT!!"
+    })
+  })
+  .catch(err => {
+    console.log(err);
+    res.status(500).json({
+      error: "YOUR ERROR = " + err
+    });
+    res.redirect('/recovery')
+  });
+}
+
+
+/**
+ * Forget Password Email Verification Link send
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.forgetPasswordVerify = async (req, res) => {
+  Recovery.findOne({
+    resetPasswordToken: req.params.token, 
+    resetPasswordExpires: { $gt: Date.now() }
+  }, (err, user) => {
+    if (user) {
+      User.findById(user.userId)
+      .then(result => {
+        let originalPW = req.body.password
+        let resetPassword = req.body.resetPassword
+        let resetPasswordCheck = req.body.resetPasswordCheck
+        if (result.validPassword(originalPW)) {
+
+          if (resetPassword === resetPasswordCheck) {
+            result.setPassword(resetPassword);
+            result.save();
+            flash('success', 'Password has been changed successfully!');
+            console.log("<<<<<<< SUCCESS >>>>>>>>")
+            return res.json({
+              success: true,
+              message: "Password has been changed successfully!"
+            });
+          } else {
+            flash('error', 'Password Check is not same as above.');
+            console.log("<<<<<<< PASSWORD CHECK WRONG >>>>>>>>")
+            return res.json({
+              success: false,
+              message: "Password Check is not same as above."
+            });
+          }
+
+        } else {
+          flash('error', 'Your original password is wrong.');
+          console.log("<<<<<<< Password is WRONG >>>>>>>>")
+            return res.json({
+              success: false,
+              message: "Your original password is wrong."
+            });
+        }
+        
+      })
+      .catch(err => {
+        res.json({
+          error: "error exists!!!!"
+        })
+      })
+    } else {
+      flash('error', 'Token Expired! Please, try recovery again.');
+      return res.redirect('/recovery')
+    }
+  })
+  
+}
+
+// exports.updatePassword = function(req, res, next)
+// {
+//   const password = req.body.password || req.query.password;
+//   const newPassword = req.body.new_password || req.query.new_password;
+//   const sUserId = req.payload.id;
+
+//   if( !password ){
+//     return res.json({
+//       success: false,
+//       errors: {password: "field is required."}
+//     })
+//     .status(400);
+//   }
+
+//   if( !newPassword ){
+//     return res.json({
+//       success: false,
+//       errors: {new_password: "field is required."}
+//     })
+//     .status(400);
+//   }
+
+//   User.findById(sUserId)
+//     .then(function(user)
+//     {
+//         if( !user )
+//         {
+//           return res.json({
+//             success: false,
+//             errors: {message: "User not found"}
+//           });
+//         }
+
+//         // Confim user is fully authenticated
+//         if( !isFullyAuthenticated({user, res}) ){
+//           return false;
+//         }
+
+//         if( user.validPassword(password) )
+//         {
+//             user.setPassword(newPassword);
+//             user.save();
+//             return res.json({
+//               success: true,
+//             });
+//         }
+//         else{
+//           return res.json({
+//             success: false,
+//             errors: {message: "Password is not valid"}
+//           });
+//         }
+//     });
+// }
