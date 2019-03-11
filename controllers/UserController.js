@@ -419,6 +419,7 @@ const checkEmailField = function({email})
 
 /**
  * Forget Password
+ * 190311 cobee
  * 
  * @param {*} req - Request object
  * @param {*} res - Response object
@@ -467,7 +468,8 @@ exports.forgetPassword = (req, res, next) => {
 
 
 /**
- * Forget Password Email Verification Link send
+ * Forget Password Verification Link Email
+ * 190311 cobee
  * 
  * @param {*} req - Request object
  * @param {*} res - Response object
@@ -527,57 +529,3 @@ exports.forgetPasswordVerify = async (req, res) => {
   
 }
 
-// exports.updatePassword = function(req, res, next)
-// {
-//   const password = req.body.password || req.query.password;
-//   const newPassword = req.body.new_password || req.query.new_password;
-//   const sUserId = req.payload.id;
-
-//   if( !password ){
-//     return res.json({
-//       success: false,
-//       errors: {password: "field is required."}
-//     })
-//     .status(400);
-//   }
-
-//   if( !newPassword ){
-//     return res.json({
-//       success: false,
-//       errors: {new_password: "field is required."}
-//     })
-//     .status(400);
-//   }
-
-//   User.findById(sUserId)
-//     .then(function(user)
-//     {
-//         if( !user )
-//         {
-//           return res.json({
-//             success: false,
-//             errors: {message: "User not found"}
-//           });
-//         }
-
-//         // Confim user is fully authenticated
-//         if( !isFullyAuthenticated({user, res}) ){
-//           return false;
-//         }
-
-//         if( user.validPassword(password) )
-//         {
-//             user.setPassword(newPassword);
-//             user.save();
-//             return res.json({
-//               success: true,
-//             });
-//         }
-//         else{
-//           return res.json({
-//             success: false,
-//             errors: {message: "Password is not valid"}
-//           });
-//         }
-//     });
-// }
