@@ -39,7 +39,8 @@ if(isProduction){
   mongoose.connect(process.env.MONGODB_URL, { useNewUrlParser: true });
 } 
 else {
-  mongoose.connect('mongodb://localhost/ether_wallet', { useNewUrlParser: true });
+  // mongoose.connect('mongodb://localhost/ether_wallet', { useNewUrlParser: true });
+  mongoose.connect('mongodb+srv://admin:1234@incowallet-test-hodpy.mongodb.net/test?retryWrites=true', { useNewUrlParser: true });
   mongoose.set('debug', true);
 }
 
