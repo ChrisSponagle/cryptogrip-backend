@@ -429,7 +429,9 @@ exports.forgetPassword = (req, res, next) => {
   User.findOne({ email: req.body.email || req.query.email }, (err, user) => {
     if (!user) {
       flash('error', 'No account with that email address exists.');
-      return res.redirect('/recovery')
+      return res.json({
+        error: "nothing found."
+      })
     }
   })
   .then(user => {
@@ -450,18 +452,18 @@ exports.forgetPassword = (req, res, next) => {
       const sToken = requestUser.resetPasswordToken;
       await recoveryEmail({sEmail, sHost, sToken});
 
-      return res.json({
-        success: true,
-        token: sToken
-      });
+      // return res.json({
+      //   success: true,
+      //   // token: sToken
+      // });
     })
   })
-  .then(() => {
-    flash('success', 'Recovery email has been sent!');
-    res.status(200).json({
-      message: "EMAIL SENT!!"
-    })
-  })
+  // .then(() => {
+  //   flash('success', 'Recovery email has been sent!');
+  //   res.status(200).json({
+  //     message: "EMAIL SENT!!"
+  //   })
+  // })
   .catch(err => {
     console.log(err);
     res.status(500).json({
@@ -488,10 +490,10 @@ exports.forgetPasswordVerify = async (req, res) => {
     if (user) {
       User.findById(user.userId)
       .then(result => {
-        let originalPW = req.body.password
+        // let originalPW = req.body.password
         let resetPassword = req.body.resetPassword
         let resetPasswordCheck = req.body.resetPasswordCheck
-        if (result.validPassword(originalPW)) {
+        // if (result.validPassword(originalPW)) {
 
           if (resetPassword === resetPasswordCheck) {
             result.setPassword(resetPassword);
@@ -511,14 +513,14 @@ exports.forgetPasswordVerify = async (req, res) => {
             });
           }
 
-        } else {
-          flash('error', 'Your original password is wrong.');
-          console.log("<<<<<<< Password is WRONG >>>>>>>>")
-            return res.json({
-              success: false,
-              message: "Your original password is wrong."
-            });
-        }
+        // } else {
+        //   flash('error', 'Your original password is wrong.');
+        //   console.log("<<<<<<< Password is WRONG >>>>>>>>")
+        //     return res.json({
+        //       success: false,
+        //       message: "Your original password is wrong."
+        //     })
+        // }
         
       })
       .catch(err => {
