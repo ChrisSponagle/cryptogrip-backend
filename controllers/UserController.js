@@ -448,9 +448,9 @@ exports.forgetPassword = (req, res, next) => {
       await requestUser.save();
 
       const sEmail = requestUser.email;
-      const sHost = req.headers.host;
+      // const sHost = req.headers.host;
       const sToken = requestUser.resetPasswordToken;
-      await recoveryEmail({sEmail, sHost, sToken});
+      await recoveryEmail({sEmail, sToken});
 
       // return res.json({
       //   success: true,
