@@ -454,7 +454,6 @@ exports.forgetPassword = (req, res, next) => {
 
       // return res.json({
       //   success: true,
-      //   // token: sToken
       // });
     })
   })
@@ -469,7 +468,7 @@ exports.forgetPassword = (req, res, next) => {
     res.status(500).json({
       error: "YOUR ERROR = " + err
     });
-    res.redirect('/recovery')
+    // res.redirect('/recovery')
   });
 }
 

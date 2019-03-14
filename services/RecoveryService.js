@@ -1,13 +1,14 @@
 var mongoose = require('mongoose');
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_KEY);
+const hostPath = process.env.HOST_PATH;
 
 
 const RecoveryService = 
 {   
     recoveryEmail: async function({sEmail, sHost, sToken})
     {
-        console.log("데이터 받아라>>>>" + sEmail + "/ " + sHost + '/ ' + sToken)
+        console.log("데이터 받아라>>>>" + sEmail + "/ " + sToken)
         try {
             const msg = {
                 to: sEmail,
