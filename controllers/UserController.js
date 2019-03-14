@@ -452,9 +452,9 @@ exports.forgetPassword = (req, res, next) => {
       const sToken = requestUser.resetPasswordToken;
       await recoveryEmail({sEmail, sToken});
 
-      // return res.json({
-      //   success: true,
-      // });
+      return res.json({
+        success: true,
+      });
     })
   })
   // .then(() => {
