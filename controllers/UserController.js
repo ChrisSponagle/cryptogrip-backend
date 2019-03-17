@@ -440,15 +440,12 @@ exports.forgetPassword = (req, res, next) => {
       const requestUser = new Recovery({
         userId: user._id,
         email: user.email,
-        // password: user.password,
         resetPasswordToken: token,
         resetPasswordExpires: Date.now() + 3600000  // expires in 1 hour
       });
-      // await requestUser.collection.dropIndex('email_1');
       await requestUser.save();
 
       const sEmail = requestUser.email;
-      // const sHost = req.headers.host;
       const sToken = requestUser.resetPasswordToken;
       await recoveryEmail({sEmail, sToken});
 
@@ -468,7 +465,7 @@ exports.forgetPassword = (req, res, next) => {
     res.status(500).json({
       error: "YOUR ERROR = " + err
     });
-    // res.redirect('/recovery')
+    res.redirect('/recovery')
   });
 }
 
@@ -489,37 +486,24 @@ exports.forgetPasswordVerify = async (req, res) => {
     if (user) {
       User.findById(user.userId)
       .then(result => {
-        // let originalPW = req.body.password
         let resetPassword = req.body.resetPassword
         let resetPasswordCheck = req.body.resetPasswordCheck
-        // if (result.validPassword(originalPW)) {
 
           if (resetPassword === resetPasswordCheck) {
             result.setPassword(resetPassword);
             result.save();
-            flash('success', 'Password has been changed successfully!');
+            // flash('success', 'Password has been changed successfully!');
             console.log("<<<<<<< SUCCESS >>>>>>>>")
             return res.json({
               success: true,
               message: "Password has been changed successfully!"
             });
           } else {
-            flash('error', 'Password Check is not same as above.');
-            console.log("<<<<<<< PASSWORD CHECK WRONG >>>>>>>>")
             return res.json({
               success: false,
               message: "Password Check is not same as above."
             });
           }
-
-        // } else {
-        //   flash('error', 'Your original password is wrong.');
-        //   console.log("<<<<<<< Password is WRONG >>>>>>>>")
-        //     return res.json({
-        //       success: false,
-        //       message: "Your original password is wrong."
-        //     })
-        // }
         
       })
       .catch(err => {
@@ -528,7 +512,7 @@ exports.forgetPasswordVerify = async (req, res) => {
         })
       })
     } else {
-      flash('error', 'Token Expired! Please, try recovery again.');
+      // flash('error', 'Token Expired! Please, try recovery again.');
       return res.redirect('/recovery')
     }
   })

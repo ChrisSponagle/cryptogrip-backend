@@ -8,7 +8,6 @@ const RecoveryService =
 {   
     recoveryEmail: async function({sEmail, sToken})
     {
-        console.log("데이터 받아라>>>>" + sEmail + "/ " + sToken)
         try {
             const msg = {
                 to: sEmail,
