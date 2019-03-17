@@ -41,9 +41,9 @@ In order to do it, make sure the correct value is set to .env file
 #### Ropsten Network
 
 ```
-WEB3_PROVIDER="https://ropsten.infura.io/v3/d92bb372bbe0423a89aabbf883491237"
-ETHERSCAN_URL="http://api-ropsten.etherscan.io/api"
-ETHERSCAN_API=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
+ETHERSCAN_API="https://api.etherscan.io/api"
+ETHERSCAN_URL="https://ropsten.etherscan.io"
+ETHERSCAN_KEY=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
 ```
 
 #### Main Network

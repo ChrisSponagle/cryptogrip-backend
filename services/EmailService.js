@@ -70,7 +70,7 @@ const EmailService =
             oVerificationEmail.email = newEmail;
         }
         oVerificationEmail.save();
-    }
+    },
 };
 
 module.exports = EmailService; 

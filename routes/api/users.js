@@ -32,4 +32,10 @@ router.put('/api/user/email', auth.required, UserController.updateEmail);
 // Confirm update of user's email
 router.post('/api/user/email', auth.required, EmailController.confirmEmailUpdate);
 
+// Forget Password
+router.post('/api/recovery', UserController.forgetPassword);
+
+// Forget Password email verify link send
+router.put('/api/reset/:token', UserController.forgetPasswordVerify);
+
 module.exports = router;
