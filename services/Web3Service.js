@@ -55,7 +55,6 @@ const Web3Service =
                 break;
             }
             case INCO_TOKEN: {
-                console.log("Send INCO");
                 return Web3Service.sendIncoCoin({user, wallet, amount}, res);
                 break;
             }

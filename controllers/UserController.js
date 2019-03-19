@@ -13,12 +13,17 @@
 
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const Recovery = mongoose.model('Recovery');
 const passport = require('passport');
+const crypto = require('crypto');
 const {sendVerificationEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
 const {getRandomPassphrases, getPassphrase, checkPassphrase} = require("../services/PassphraseService");
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getVerificationEmailModel} = require("./EmailController");
+// const {generateToken} = require("../services/RecoveryService");
+const {recoveryEmail} = require("../services/RecoveryService");
+const flash = require('express-flash');
 
 /**
  * Register new user account
@@ -346,7 +351,7 @@ exports.updateEmail = function(req, res, next)
         const oUser = user;
         
         // Send verification code for new email
-        sendVerificationEmail({oUser, newEmail});        
+        sendVerificationEmail({oUser, newEmail}); 
 
         return res.json({
           success: true,
@@ -394,3 +399,123 @@ const checkMandatoryFields = function({username, email, password})
 
   return aErors;
 }
+
+/**
+ * Check if email field is present on request or not.
+ * 
+ * @param {email}
+ * @returns Object
+*/
+const checkEmailField = function({email})
+{
+  var aErors = {};
+
+  if ( !email ){
+    aErors.email = "can not be blank";
+  }
+
+  return aErors;
+}
+
+/**
+ * Forget Password
+ * 190311 cobee
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.forgetPassword = (req, res, next) => {
+  User.findOne({ email: req.body.email || req.query.email }, (err, user) => {
+    if (!user) {
+      flash('error', 'No account with that email address exists.');
+      return res.json({
+        error: "nothing found."
+      })
+    }
+  })
+  .then(user => {
+    crypto.randomBytes(20, async (err, buf) => {
+      const token = buf.toString('hex');
+      const requestUser = new Recovery({
+        userId: user._id,
+        email: user.email,
+        resetPasswordToken: token,
+        resetPasswordExpires: Date.now() + 3600000  // expires in 1 hour
+      });
+      await requestUser.save();
+
+      const sEmail = requestUser.email;
+      const sToken = requestUser.resetPasswordToken;
+      await recoveryEmail({sEmail, sToken});
+
+      return res.json({
+        success: true,
+      });
+    })
+  })
+  // .then(() => {
+  //   flash('success', 'Recovery email has been sent!');
+  //   res.status(200).json({
+  //     message: "EMAIL SENT!!"
+  //   })
+  // })
+  .catch(err => {
+    console.log(err);
+    res.status(500).json({
+      error: "YOUR ERROR = " + err
+    });
+    res.redirect('/recovery')
+  });
+}
+
+
+/**
+ * Forget Password Verification Link Email
+ * 190311 cobee
+ * 
+ * @param {*} req - Request object
+ * @param {*} res - Response object
+ * @param {*} next 
+*/
+exports.forgetPasswordVerify = async (req, res) => {
+  Recovery.findOne({
+    resetPasswordToken: req.params.token, 
+    resetPasswordExpires: { $gt: Date.now() }
+  }, (err, user) => {
+    if (user) {
+      User.findById(user.userId)
+      .then(result => {
+        let resetPassword = req.body.resetPassword
+        let resetPasswordCheck = req.body.resetPasswordCheck
+
+          if (resetPassword === resetPasswordCheck) {
+            result.setPassword(resetPassword);
+            result.save();
+            // flash('success', 'Password has been changed successfully!');
+            console.log("<<<<<<< SUCCESS >>>>>>>>")
+            return res.json({
+              success: true,
+              message: "Password has been changed successfully!"
+            });
+          } else {
+            return res.json({
+              success: false,
+              message: "Password Check is not same as above."
+            });
+          }
+        
+      })
+      .catch(err => {
+        res.json({
+          error: "error exists!!!!"
+        })
+      })
+    } else {
+      // flash('error', 'Token Expired! Please, try recovery again.');
+      return res.redirect('/recovery')
+    }
+  })
+  
+}
+
