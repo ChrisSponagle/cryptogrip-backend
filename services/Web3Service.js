@@ -8,7 +8,8 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/12/2018
+    Date: 05/12/2018
+    Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
 const stripHexPrefix = require('strip-hex-prefix');
@@ -21,6 +22,11 @@ const Transaction = mongoose.model('Transaction')
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
 const ABI = require("../util/abi.json");
 const gasPriceGlobal = new BigNumber(450000);
+// Bitcoin lib
+const bitcoin = require('bitcoinjs-lib');
+const assert = require('assert');
+const TESTNET = bitcoin.networks.testnet;
+
 
 // TODO: Later this information should come dinamically from database
 const INCO_CONTRACT = process.env.INCO_TOKEN;
@@ -31,14 +37,28 @@ const INCO_DECIMALS = process.env.INCO_DECIMALS;
 const Web3Service = 
 {   
     /**
-     * Create new Etherium account
+     * Create new Bitcoin account(wallet)
      * 
+     * @return Account
+     */
+    createBtcAccount: function(){
+        const keyPair = bitcoin.ECPair.makeRandom({ network: TESTNET });
+        // const publicKey = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: TESTNET });
+        const publicKey = keyPair.publicKey.toString('hex');
+        let privateKey = keyPair.toWIF();
+        let pass = { publicKey, privateKey }
+        return pass;
+    },
+
+    /**
+     * Create new Etherium account(wallet)
      * @return Account
      */
     createEthAccount: function(){
         var account = web3.eth.accounts.create();
         return account;
     },
+
 
     /**
      * Define which coin to send to user

@@ -48,6 +48,7 @@ require('./models/User');
 require('./models/VerificationEmail');
 require('./models/Transaction');
 require('./models/Recovery');
+require('./models/Wallet');
 require('./config/passport');
 
 app.use(require('./routes'));

@@ -8,16 +8,18 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/12/2018
+  Date: 05/12/2018
+  Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const Wallet = mongoose.model('Wallet');
 const Recovery = mongoose.model('Recovery');
 const passport = require('passport');
 const crypto = require('crypto');
 const {sendVerificationEmail} = require("../services/EmailService");
-const {createEthAccount} = require("../services/Web3Service");
+const {createBtcAccount, createEthAccount} = require("../services/Web3Service");
 const {getRandomPassphrases, getPassphrase, checkPassphrase} = require("../services/PassphraseService");
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getVerificationEmailModel} = require("./EmailController");
@@ -63,10 +65,25 @@ exports.createAccount = function(req, res, next)
       // Send verification code for email
       sendVerificationEmail({oUser});
 
-      // Create new Eth account
-      var oAccount = createEthAccount();
-      oUser.address = oAccount.address;
-      oUser.privateKey = oAccount.privateKey
+      // Create new Wallet Account
+      let nBtcWallet = createBtcAccount();
+      let oBtcWallet = new Wallet({
+        user: oUser._id,
+        type: 'BTC',
+        privateKey: nBtcWallet.privateKey,
+        publicKey: nBtcWallet.publicKey
+      });
+      oBtcWallet.save();
+
+      let nEthWallet = createEthAccount();
+      let oEthWallet = new Wallet({
+        user: oUser._id,
+        type: 'ETH',
+        privateKey: nEthWallet.privateKey,
+        publicKey: nEthWallet.address
+      });
+      oEthWallet.save();
+
 
       // Generate passphrase list for user
       const oPassphrases = getRandomPassphrases(); 
@@ -75,7 +92,9 @@ exports.createAccount = function(req, res, next)
       oUser.save();
       return res.json({
         success: true,
-        user: oUser.toAuthJSON()
+        user: oUser.toAuthJSON(),
+        btc_wallet_address: oBtcWallet.toAuthJSON(),
+        eth_wallet_address: oEthWallet.toAuthJSON()
       });
     })
     .catch(next);

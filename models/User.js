@@ -8,7 +8,8 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/12/2018
+  Date: 05/12/2018
+  Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
 const mongoose = require('mongoose');
@@ -21,29 +22,21 @@ const UserSchema = new mongoose.Schema({
   username: {type: String, unique: true, required: [true, "can not be blank"], match: [/^[a-zA-Z0-9]+$/, 'is invalid'], index: true},
   email: {type: String, lowercase: true, unique: true, required: [true, "can not be blank"], match: [/\S+@\S+\.\S+/, 'is invalid'], index: true},
   password: {
-    type: String,
-    default: ""
+      type: String,
+      default: ""
   },
   verified: {
-    type: Boolean,
-    default: false,
+      type: Boolean,
+      default: false,
   },
   passphrase: {
-    type: String,
-    default: ''
+      type: String,
+      default: ''
   },
   isDeleted: {
       type: Boolean,
       default: false
   },
-  address:{
-      type: String,
-      default: ''
-  },
-  privateKey: {
-    type: String,
-    default: ''
-  }
 }, {timestamps: true});
 
 UserSchema.plugin(uniqueValidator, {message: 'is already taken.'});
@@ -75,14 +68,14 @@ UserSchema.methods.toAuthJSON = function(){
     username: this.username,
     email: this.email,
     token: this.generateJWT(),
-    wallet_address: this.address
   };
 };
 
 UserSchema.methods.toProfileJSONFor = function(user){
   return {
     username: this.username,
-    wallet_address: this.address
+    // btc_wallet_address: btc_address,
+    // eth_wallet_address: eth_address
   };
 };
 
