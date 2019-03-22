@@ -9,18 +9,21 @@
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
 	Date: 08/12/2018
+	Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
 const axios = require("axios");
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
+const BLOCKCHAIN_URL = process.env.BLOCKCHAIN_URL;
 const {parseValue, getCoinName} = require("../services/CryptoParser");
 const {getAccountBalance} = require("./Web3Service");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=balance&tag=latest&apikey="+ETHERSCAN_KEY+"&address=";
 const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokenbalance&contractaddress="+INCO_CONTRACT+"&apikey="+ETHERSCAN_KEY+"&tag=latest&address=";
+const BTC_URL = BLOCKCHAIN_URL
 
 const BalanceService = 
 {  
@@ -54,7 +57,36 @@ const BalanceService =
 			  console.log(e);
 			  return null;
 		  });
-    },
+	},
+	
+	/**
+	 * Get balances of account on Bitcoin
+	 * 
+	 * @param {String} accountNo 
+	 */
+    getBalanceFromBlockchainByAccount : async function (accountNo) 
+    {
+		return axios.all([
+			axios.get(BTC_URL + accountNo)
+		])
+		.then(res => {
+			let keyValues = Object.values(res[0].data)
+			// console.log("(result)>>>>>>>> " + keyValues[0].final_balance)
+
+			// satoshi to BTC
+			let btcBalance = keyValues[0].final_balance * 0.00000001;
+			console.log("btc_ballance=======> " + btcBalance);
+			let btcData = {
+				coin: "BTC",
+				balance: btcBalance
+			}
+			return btcData
+		})
+		.catch(err => {
+			console.log("error===> " + err)
+			return null
+		})
+	},
 
 	// TODO: Get balance from blockchain
 	// this function will be used when EtherScan fails

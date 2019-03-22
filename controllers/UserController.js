@@ -71,7 +71,7 @@ exports.createAccount = function(req, res, next)
         user: oUser._id,
         type: 'BTC',
         privateKey: nBtcWallet.privateKey,
-        publicKey: nBtcWallet.publicKey
+        publicKey: nBtcWallet.address
       });
       oBtcWallet.save();
 

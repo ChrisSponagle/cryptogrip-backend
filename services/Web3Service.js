@@ -43,10 +43,16 @@ const Web3Service =
      */
     createBtcAccount: function(){
         const keyPair = bitcoin.ECPair.makeRandom({ network: TESTNET });
-        // const publicKey = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: TESTNET });
-        const publicKey = keyPair.publicKey.toString('hex');
         let privateKey = keyPair.toWIF();
-        let pass = { publicKey, privateKey }
+        // const publicKey = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey });
+        let publicKey = Buffer.from(keyPair.publicKey, 'hex');
+        let { address } = bitcoin.payments.p2pkh({ pubkey: publicKey, network: TESTNET });
+        // let pubKey = keyPair.ECPair.fromPublicKey();
+        // var redeemScript = bitcoin.script.witnessPubKeyHash.output.encode(bitcoin.crypto.hash160(pubKey));
+        // var scriptPubKey = bitcoin.script.scriptHash.output.encode(bitcoin.crypto.hash160(redeemScript));
+        // var publicKey = bitcoin.address.fromOutputScript(scriptPubKey);
+        // let publicKey = key.pub.getAddress().toString();
+        let pass = { publicKey, privateKey, address }
         return pass;
     },
 
