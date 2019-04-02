@@ -21,6 +21,7 @@
     "bignumber.js": "^8.0.0",
     "bitcoinjs-lib": "^4.0.3",
     "body-parser": "1.18.3",
+    "circular-json": "^0.5.9",
     "cors": "2.8.5",
     "dotenv": "^6.0.0",
     "ejs": "2.6.1",

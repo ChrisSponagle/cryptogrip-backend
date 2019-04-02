@@ -12,7 +12,6 @@
   Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
-
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const Wallet = mongoose.model('Wallet');
@@ -27,6 +26,7 @@ const {
   getBalanceFromBlockChain
 } = require("../services/BalanceService");
 const {sendCoin} = require("../services/Web3Service");
+
 
 /**
  * Get balance of user's account
@@ -54,7 +54,7 @@ exports.sendCoin = function(req, res, next)
   }
 
   User.findById(sUserId)
-    .then(function(user)
+    .then(async function(user)
     {
       // If user is not found, just return false
       if( !user )
@@ -65,15 +65,23 @@ exports.sendCoin = function(req, res, next)
         }).status(422);
       }
 
-      if( user.address.toLowerCase() == wallet.toLowerCase() )
-      {
-        return res.json({
-          success: false,
-          errors: {message: "Can not send coin to same address"}
-        }).status(422);
-      }
-      
-      const pSendCoin = sendCoin({user, coin, wallet, amount}, res);
+      Wallet.findOne({ user: sUserId, type: coin })
+        .then(result => {
+          if( (result.publicKey || result.publicKey.toLowerCase()) == (wallet || wallet.toLowerCase()) )
+          {
+            return result.json({
+              success: false,
+              errors: {message: "Can not send coin to same address"}
+            }).status(422);
+          }
+        })
+        .catch(err => {
+          return res.json({
+            error: err
+          })
+        })
+
+      const pSendCoin = sendCoin({user, wallet, amount, coin}, res);
       pSendCoin
       .then(function(err){
         if(err && err.errors)
@@ -83,7 +91,8 @@ exports.sendCoin = function(req, res, next)
             errors: err.errors
           });
         }
-      });
+      })
+      
 
     });
 }

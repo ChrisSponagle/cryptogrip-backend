@@ -60,18 +60,18 @@ exports.createAccount = function(req, res, next)
 
   // Save new user
   oUser.save()
-    .then(function()
+    .then(async function()
     {
       // Send verification code for email
       sendVerificationEmail({oUser});
 
       // Create new Wallet Account
-      let nBtcWallet = createBtcAccount();
-      let oBtcWallet = new Wallet({
+      let nBtcWallet = await createBtcAccount();
+      let oBtcWallet = await new Wallet({
         user: oUser._id,
         type: 'BTC',
         privateKey: nBtcWallet.privateKey,
-        publicKey: nBtcWallet.address
+        publicKey: nBtcWallet.address,
       });
       oBtcWallet.save();
 

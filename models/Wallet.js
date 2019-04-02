@@ -30,7 +30,7 @@ const WalletSchema = new mongoose.Schema({
     publicKey: {
         type: String,
         default: ""
-    }
+    },
 }, {timestamps: true})
 
 WalletSchema.methods.toAuthJSON = function(){

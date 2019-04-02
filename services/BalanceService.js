@@ -66,25 +66,28 @@ const BalanceService =
 	 */
     getBalanceFromBlockchainByAccount : async function (accountNo) 
     {
-		return axios.all([
-			axios.get(BTC_URL + accountNo)
-		])
+		let addressCall = BTC_URL+accountNo+"/full"
+		
+		return await axios.get(addressCall)
 		.then(res => {
-			let keyValues = Object.values(res[0].data)
-			// console.log("(result)>>>>>>>> " + keyValues[0].final_balance)
+			let btcBalance = parseFloat((res.data.final_balance * 0.00000001).toFixed(8))	// satoshi to BTC
+			let txid = res.data.txs[0].hash;
+			let oIndex = res.data.txs[0].inputs[0].output_index;
+			let address = res.data.address
 
-			// satoshi to BTC
-			let btcBalance = keyValues[0].final_balance * 0.00000001;
-			console.log("btc_ballance=======> " + btcBalance);
 			let btcData = {
 				coin: "BTC",
-				balance: btcBalance
+				address: address,
+				balance: btcBalance,
+				txid: txid,
+				oIndex: oIndex,
 			}
 			return btcData
+
 		})
 		.catch(err => {
-			console.log("error===> " + err)
-			return null
+			console.log("axios error===> " + err)
+			return err
 		})
 	},
 
@@ -108,7 +111,7 @@ const BalanceService =
 		// Create new elements
 		.forEach(balance => 
 		{
-            var balanceValue = parseValue(balance, balance.result);
+			var balanceValue = parseValue(balance, balance.result);
             if(isNaN(balanceValue)){
                 balanceValue = 0;
             }
