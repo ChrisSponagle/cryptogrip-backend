@@ -188,8 +188,12 @@ const Web3Service =
     */
     sendIncoCoin: async function({user, wallet, amount}, res)
     {
-        const privateKeyStr = stripHexPrefix(user.privateKey);
+        let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
+        const privateKeyStr = stripHexPrefix(senderWallet.privateKey);
         const privateKey = Buffer.from(privateKeyStr, 'hex');
+        
+        let bPublicKey = senderWallet.publicKey
+
         var contract_buf = new web3.eth.Contract(ABI, INCO_CONTRACT);
         var amountFee = (web3.utils.toWei(amount.toString())).toString();
 
@@ -203,12 +207,12 @@ const Web3Service =
             .encodeABI();
 
             nonce = await web3.eth
-            .getTransactionCount(user.address)
+            .getTransactionCount(bPublicKey)
             .catch(error => {
                 return 'Error occurred in getting transaction count!';
             });
         }catch(err){
-            console.log("Invalid wallet address: ", user.address);
+            console.log("Invalid wallet address: ", bPublicKey);
             return {errors: {message : "Wallet address is invalid."}};
         }
         
@@ -227,7 +231,7 @@ const Web3Service =
         // Prepare transaction data for contract
         var txParams = {
             nonce: web3.utils.toHex(nonce),
-            from: user.address,
+            from: bPublicKey,
             to: contract_buf._address,
             gasPrice: web3.utils.toHex(gasPrice),
             gasLimit: web3.utils.toHex(450000),
@@ -312,8 +316,6 @@ const Web3Service =
         const privateKey = Buffer.from(privateKeyStr, 'hex');
         
         let bPublicKey = senderWallet.publicKey
-        let bPrivateKey = senderWallet.privateKey
-        // console.log("yoyoyo>>>>>>>>>>>>>> " + typeof(bPublicKey) + " / " + bPublicKey)
 
         let nonce = null;
         
@@ -321,6 +323,7 @@ const Web3Service =
             nonce = await web3.eth
             .getTransactionCount(bPublicKey)
             .catch(error => {
+                console.log(nonce)
                 return res.json({
                     error: 'Error occurred in getting transaction count!',
                 })
@@ -335,94 +338,92 @@ const Web3Service =
         }
         
         // Get gas price
-        // let gasPriceWeb3 = await web3.eth.getGasPrice();
-        // let gasPrice = new BigNumber(gasPriceGlobal);
-        // console.log(">>>>>. " + gasPrice)
+        let gasPriceWeb3 = await web3.eth.getGasPrice();
+        let gasPrice = new BigNumber(gasPriceGlobal);
         
-        // // Calculate amount in Ether value
-        // let calculatedAmount = amount * (10 ** 18);
+        // Calculate amount in Ether value
+        let calculatedAmount = amount * (10 ** 18);
 
-        // if ( gasPrice.isLessThan(gasPriceWeb3) )
-        // {
-        //     gasPrice = gasPriceWeb3;
-        // } 
+        if ( gasPrice.isLessThan(gasPriceWeb3) )
+        {
+            gasPrice = gasPriceWeb3;
+        } 
         
-        // // Prepare transaction data
-        // let txParams = {
-        //     nonce: web3.utils.toHex(nonce),
-        //     from: bPublicKey,
-        //     to: wallet,
-        //     gasPrice: web3.utils.toHex(gasPrice),
-        //     gasLimit: web3.utils.toHex(450000),
-        //     value: web3.utils.toHex(calculatedAmount),
-        // };
+        // Prepare transaction data
+        let txParams = {
+            nonce: web3.utils.toHex(nonce),
+            from: bPublicKey,
+            to: wallet,
+            gasPrice: web3.utils.toHex(gasPrice),
+            gasLimit: web3.utils.toHex(450000),
+            value: web3.utils.toHex(calculatedAmount),
+        };
 
-        // var tx = null;
-        // try{
-        //     tx = await new Tx(txParams);
-        // } catch(err){
-        //     console.log(err);
-        //     return res.json({
-        //         errors: {message : "Destination wallet address is invalid."}
-        //     }) 
-        // }
-        // console.log("tx.>>>>>>>>>> " + tx)
+        var tx = null;
+        try{
+            tx = await new Tx(txParams);
+        } catch(err){
+            console.log(err);
+            return res.json({
+                errors: {message : "Destination wallet address is invalid."}
+            }) 
+        }
         
-        // // Sign transaction with private key, so it is valid for the blockchain
-        // tx.sign(EthUtil.toBuffer(privateKey));
+        // Sign transaction with private key, so it is valid for the blockchain
+        tx.sign(EthUtil.toBuffer(privateKey));
 
-        // var serializedTx = tx.serialize();
+        var serializedTx = tx.serialize();
 
-        // web3.eth
-        //     // Try to place transaction
-        //     .sendSignedTransaction(`0x${serializedTx.toString('hex')}`)
-        //     .on('transactionHash', function(hash){
-        //         res.json({
-        //             success: true,
-        //             transaction: hash
-        //         });
-        //         return true;
-        //     })
+        web3.eth
+            // Try to place transaction
+            .sendSignedTransaction(`0x${serializedTx.toString('hex')}`)
+            .on('transactionHash', function(hash){
+                res.json({
+                    success: true,
+                    transaction: hash
+                });
+                return true;
+            })
 
-        //     // Transaction worked
-        //     .on('receipt', receipt => 
-        //     {
-        //         if(receipt && receipt.status)
-        //         {
-        //             var oTransaction = new Transaction();
-        //             oTransaction.txHash = receipt.transactionHash;
-        //             oTransaction.from = receipt.from;
-        //             oTransaction.to = receipt.to;
-        //             oTransaction.value = calculatedAmount;
-        //             oTransaction.blockNumber = receipt.blockNumber;
-        //             oTransaction.gas = receipt.gasUsed;
-        //             oTransaction.gasPrice = receipt.cumulativeGasUsed;
-        //             // Time
-        //             var date = new Date();
-        //             // Save timestamp without miliseconds
-        //             oTransaction.timestamp = Math.floor(date.getTime()/1000);
-        //             if(receipt.contractAddress){
-        //                 oTransaction.contractAddress = receipt.contractAddress;
-        //             }
+            // Transaction worked
+            .on('receipt', receipt => 
+            {
+                if(receipt && receipt.status)
+                {
+                    var oTransaction = new Transaction();
+                    oTransaction.txHash = receipt.transactionHash;
+                    oTransaction.from = receipt.from;
+                    oTransaction.to = receipt.to;
+                    oTransaction.value = calculatedAmount;
+                    oTransaction.blockNumber = receipt.blockNumber;
+                    oTransaction.gas = receipt.gasUsed;
+                    oTransaction.gasPrice = receipt.cumulativeGasUsed;
+                    // Time
+                    var date = new Date();
+                    // Save timestamp without miliseconds
+                    oTransaction.timestamp = Math.floor(date.getTime()/1000);
+                    if(receipt.contractAddress){
+                        oTransaction.contractAddress = receipt.contractAddress;
+                    }
 
-        //             oTransaction.save();
-        //             return true;
-        //         }
+                    oTransaction.save();
+                    return true;
+                }
 
-        //         return false;
-        //     })
-        //     // Some error happened, probably not enough money
-        //     .on('error', err => {
-        //         console.log("Error when sending ETH: ", err);
-        //         if(err)
-        //         {
-        //             return res.json({
-        //                 success: false,
-        //                 errors: {message: "Not enough funds."}
-        //             });
-        //         }                
-        //         return err;
-        //     });  
+                return false;
+            })
+            // Some error happened, probably not enough money
+            .on('error', err => {
+                console.log("Error when sending ETH: ", err);
+                if(err)
+                {
+                    return res.json({
+                        success: false,
+                        errors: {message: "Not enough funds."}
+                    });
+                }                
+                return err;
+            });  
     },
 
     //TODO: Get balance from blockchian based on contract address and account address
