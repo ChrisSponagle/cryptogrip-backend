@@ -60,13 +60,13 @@ const BalanceService =
 	},
 	
 	/**
-	 * Get balances of account on Bitcoin
+	 * Get balance of Bitcoin Account
 	 * 
 	 * @param {String} accountNo 
 	 */
     getBalanceFromBlockchainInfoByAccount : async function (accountNo) 
     {
-		let addressCall = BTC_URL+accountNo+"/full"
+		let addressCall = BTC_URL+accountNo+"?confirmations=6"
 		
 		return await axios.get(addressCall)
 		.then(res => {

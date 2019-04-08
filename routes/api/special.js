@@ -12,6 +12,6 @@ const UserController = require("../../controllers/UserController");
 
 
 // Get list of accounts ordered by creation time
-router.get('/api/accounts', UserController.getAccounts);
+// router.get('/api/accounts', UserController.getAccounts);
 
 module.exports = router;

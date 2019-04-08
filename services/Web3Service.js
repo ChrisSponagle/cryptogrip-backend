@@ -12,7 +12,6 @@
     Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
-const axios = require("axios");
 const stripHexPrefix = require('strip-hex-prefix');
 const BigNumber =  require('bignumber.js');
 const Web3 = require('web3');
@@ -25,16 +24,7 @@ const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER)
 const ABI = require("../util/abi.json");
 const gasPriceGlobal = new BigNumber(450000);
 
-const {
-    getBalanceFromBlockchainInfoByAccount
-} = require("./BalanceService");
-
-// Bitcoin lib
-const bitcoin = require('bitcoinjs-lib');
-
-const BTC_NETWORK = bitcoin.networks.bitcoin;
-const TESTNET = bitcoin.networks.testnet;
-const currentNetwork = TESTNET
+const {sendBtcCoin} = require("./BTCService");
 
 // TODO: Later this information should come dinamically from database
 const INCO_CONTRACT = process.env.INCO_TOKEN;
@@ -46,42 +36,7 @@ const BTC_TOKEN = "BTC";
 
 const Web3Service = 
 {   
-    /**
-     * Create new Bitcoin account(wallet)
-     * 
-     * @return Account
-     */
-    createBtcAccount: async function(){
-        // generate a SegWit address (via P2SH)
-        
-        let privateKey = bitcoin.ECPair.makeRandom({ network: currentNetwork }).toWIF();
-        
-        let keyPair = await bitcoin.ECPair.fromWIF(privateKey, currentNetwork);
-        let { address } = await bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: currentNetwork}),
-            network: currentNetwork
-        })
-    
-        let pass = { privateKey, address }
-        return pass;
 
-
-
-        // const keyPair = bitcoin.ECPair.makeRandom({ network: TESTNET });
-        // let privateKey = keyPair.toWIF();
-        // // console.log()
-        // // const publicKey = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey });
-        // let publicKey = keyPair.publicKey; 
-        // // let publicKey = Buffer.from(keyPair.publicKey, 'hex');
-        // let { address } = bitcoin.payments.p2pkh({ pubkey: publicKey, network: TESTNET });
-        // // let pubKey = keyPair.ECPair.fromPublicKey();
-        // // var redeemScript = bitcoin.script.witnessPubKeyHash.output.encode(bitcoin.crypto.hash160(pubKey));
-        // // var scriptPubKey = bitcoin.script.scriptHash.output.encode(bitcoin.crypto.hash160(redeemScript));
-        // // var publicKey = bitcoin.address.fromOutputScript(scriptPubKey);
-        // // let publicKey = key.pub.getAddress().toString();
-        // let pass = { publicKey, privateKey, address }
-        // return pass;
-    },
 
     /**
      * Create new Etherium account(wallet)
@@ -91,7 +46,6 @@ const Web3Service =
         var account = web3.eth.accounts.create();
         return account;
     },
-
 
     /**
      * Define which coin to send to user
@@ -112,7 +66,7 @@ const Web3Service =
                 break;
             }
             case BTC_TOKEN: {
-                return Web3Service.sendBtcCoin({user, wallet, amount}, res);
+                return sendBtcCoin({user, wallet, amount}, res);
                 break;
             }
 
@@ -120,66 +74,6 @@ const Web3Service =
                 return null;
         }
     },
-
-    /**
-     * Send etherium coin to user's account
-     * 
-     * @param {user, wallet, amount} 
-     * @param {*} res 
-    */
-   sendBtcCoin: async function({user, wallet, amount}, res)
-   {
-        // fee? should be defined? (if fee is so cheap, transaction is never gonna be confirmed)
-
-        // Create (and broadcast via 3PBP) a Transaction, w/ a P2SH(P2WPKH) input
-        let senderWallet = await Wallet.findOne({ user: user, type: 'BTC' })
-        let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, currentNetwork);
-        let p2wpkh = await bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: currentNetwork })
-        let p2sh = await bitcoin.payments.p2sh({ redeem: p2wpkh, network: currentNetwork })
-
-        // Building Transaction(To Send)
-        let txb = new bitcoin.TransactionBuilder(currentNetwork);
-
-        // // Find out the Total amount | amount to Keep
-        let Balance = await getBalanceFromBlockchainInfoByAccount(senderWallet.publicKey)
-        let txid = Balance.txid; // hash of previous transaction
-        let oIndex = Balance.oIndex;   // previous transaction input's index of sender address
-        let totalBalance = await parseInt((Balance.balance * 100000000).toFixed(0));
-        let amountToSend = await parseInt((amount * 100000000).toFixed(0));
-        let fee = 100000
-        let leftOver = totalBalance - amountToSend - fee
-        console.log("Total amount / sent / left over ===> " + totalBalance + ' / ' + amountToSend + ' / ' + typeof(leftOver));
-        
-        // Sending Coin
-        txb.addInput(txid, oIndex);
-        txb.addOutput(wallet, amountToSend);     // send to recepient
-        txb.addOutput(senderWallet.publicKey, leftOver);    // left over bitcoin should be a fee
-
-        try {
-            txb.sign(0, keyPair, p2sh.redeem.output, null, totalBalance);
-            let txhex = txb.build().toHex();
-            console.log("왜또 ㅡㅡ ===> " + txhex)
-            
-        // BROADCAST(PUSH) the Transaction to the Mainnet(or testnet)
-            await axios({
-                method: 'post',
-                url: 'https://api.blockcypher.com/v1/btc/test3/txs/push',
-                data: {
-                  "tx": txhex
-                }
-            })
-            .then(result => {
-                console.log("결과======> " + result)
-                return JSON.parse(result)
-            })
-            .catch(error => {
-                console.log(" ERR(after .then) =====> " + error)
-            })
-        } catch(err) {
-            console.log("ERR(try_catch) is =====> " + err)
-        }
-        
-   },
 
     /**
      * Send etherium coin to user's account

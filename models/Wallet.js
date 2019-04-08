@@ -33,12 +33,13 @@ const WalletSchema = new mongoose.Schema({
     },
 }, {timestamps: true})
 
-WalletSchema.methods.toJSON = function(){
+WalletSchema.methods.toJSON = function()
+{
     return {
       type: this.type,  
       address: this.publicKey,
     };
-  };
+};
 
 
 mongoose.model('Wallet', WalletSchema);

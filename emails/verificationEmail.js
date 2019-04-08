@@ -8,7 +8,7 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/02/2018
+	Date: 05/12/2018
 *********************************************************/
 
 
