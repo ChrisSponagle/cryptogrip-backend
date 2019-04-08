@@ -22,7 +22,7 @@ const {
 } = require("../services/TransactionHistoryService");
 const {
   getBalanceFromEtherScanByAccount,
-  getBalanceFromBlockchainByAccount,
+  getBalanceFromBlockchainInfoByAccount,
   getBalanceFromBlockChain
 } = require("../services/BalanceService");
 const {sendCoin} = require("../services/Web3Service");
@@ -150,7 +150,7 @@ exports.getUserBalance = function(req, res, next)
       // BTC wallet
     btcBLC = async () => Wallet.findOne({ user: sUserId, type: 'BTC' })
           .then(res => {
-            let pParsedBalance = getBalanceFromBlockchainByAccount(res.publicKey);
+            let pParsedBalance = getBalanceFromBlockchainInfoByAccount(res.publicKey);
             return pParsedBalance
           })
           .then(balances => {

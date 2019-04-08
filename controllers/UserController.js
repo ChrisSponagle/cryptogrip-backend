@@ -73,6 +73,7 @@ exports.createAccount = function(req, res, next)
         privateKey: nBtcWallet.privateKey,
         publicKey: nBtcWallet.address,
       });
+      
       oBtcWallet.save();
 
       let nEthWallet = createEthAccount();
@@ -82,6 +83,7 @@ exports.createAccount = function(req, res, next)
         privateKey: nEthWallet.privateKey,
         publicKey: nEthWallet.address
       });
+
       oEthWallet.save();
 
 
@@ -90,11 +92,12 @@ exports.createAccount = function(req, res, next)
       var sPassphrases = oPassphrases.indexes.join(' ');
       oUser.passphrase = sPassphrases;
       oUser.save();
+
       return res.json({
         success: true,
         user: oUser.toAuthJSON(),
-        btc_wallet_address: oBtcWallet.toAuthJSON(),
-        eth_wallet_address: oEthWallet.toAuthJSON()
+        btc_wallet_address: oBtcWallet.toJSON(),
+        eth_wallet_address: oEthWallet.toJSON()
       });
     })
     .catch(next);

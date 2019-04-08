@@ -49,9 +49,11 @@ UserSchema.methods.setPassword = function(password){
   this.password = bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
 };
 
-UserSchema.methods.generateJWT = function() {
+UserSchema.methods.generateJWT = function() 
+{
   var today = new Date();
   var exp = new Date(today);
+
   // JWT expires in 1 hour
   var hour = 3600000;
   exp.setTime(today.getTime() + hour); 

@@ -33,8 +33,9 @@ const WalletSchema = new mongoose.Schema({
     },
 }, {timestamps: true})
 
-WalletSchema.methods.toAuthJSON = function(){
+WalletSchema.methods.toJSON = function(){
     return {
+      type: this.type,  
       address: this.publicKey,
     };
   };

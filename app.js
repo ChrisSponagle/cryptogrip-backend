@@ -40,7 +40,7 @@ if(isProduction){
 } 
 else {
   // Test DB address
-  mongoose.connect('mongodb://localhost/ether_wallet', { useNewUrlParser: true });
+  mongoose.connect('mongodb://localhost/inco_wallet', { useNewUrlParser: true });
   mongoose.set('debug', true);
 }
 

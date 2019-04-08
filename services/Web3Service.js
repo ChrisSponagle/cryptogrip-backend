@@ -24,12 +24,13 @@ const Transaction = mongoose.model('Transaction')
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
 const ABI = require("../util/abi.json");
 const gasPriceGlobal = new BigNumber(450000);
+
 const {
-    getBalanceFromBlockchainByAccount
+    getBalanceFromBlockchainInfoByAccount
 } = require("./BalanceService");
+
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
-const assert = require('assert');
 
 const BTC_NETWORK = bitcoin.networks.bitcoin;
 const TESTNET = bitcoin.networks.testnet;
@@ -140,7 +141,7 @@ const Web3Service =
         let txb = new bitcoin.TransactionBuilder(currentNetwork);
 
         // // Find out the Total amount | amount to Keep
-        let Balance = await getBalanceFromBlockchainByAccount(senderWallet.publicKey)
+        let Balance = await getBalanceFromBlockchainInfoByAccount(senderWallet.publicKey)
         let txid = Balance.txid; // hash of previous transaction
         let oIndex = Balance.oIndex;   // previous transaction input's index of sender address
         let totalBalance = await parseInt((Balance.balance * 100000000).toFixed(0));
