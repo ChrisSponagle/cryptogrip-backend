@@ -16,14 +16,14 @@ const axios = require("axios");
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
-const BLOCKCHA_INFO_URL = process.env.BLOCKCHA_INFO_URL;
+const BLOCKCHAIN_INFO_URL = process.env.BLOCKCHAIN_INFO_URL;
 const {parseValue, getCoinName} = require("../services/CryptoParser");
 const {getAccountBalance} = require("./Web3Service");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=balance&tag=latest&apikey="+ETHERSCAN_KEY+"&address=";
 const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokenbalance&contractaddress="+INCO_CONTRACT+"&apikey="+ETHERSCAN_KEY+"&tag=latest&address=";
-const BTC_URL = BLOCKCHA_INFO_URL+"/q/addressbalance/";
+const BTC_URL = BLOCKCHAIN_INFO_URL+"/q/addressbalance/";
 
 const BalanceService = 
 {  

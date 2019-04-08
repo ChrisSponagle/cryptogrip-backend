@@ -64,12 +64,14 @@ ETHERSCAN_API=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
 
 ```
 BITCOIN_MAIN_NETWORK=0
-BLOCKCHA_INFO_URL="https://blockchain.info"
+BLOCKCHAIN_INFO_URL="https://blockchain.info"
+BLOCKCYPHER="https://api.blockcypher.com/v1/btc/test3"
 ```
 
 #### Main Network
 
 ```
 BITCOIN_MAIN_NETWORK=1
-BLOCKCHA_INFO_URL="https://blockchain.info"
+BLOCKCHAIN_INFO_URL="https://blockchain.info"
+BLOCKCYPHER="https://api.blockcypher.com/v1/btc/main"
 ```

@@ -12,10 +12,7 @@
 *********************************************************/
 
 const axios = require("axios");
-const BigNumber =  require('bignumber.js');
-const {
-    getBalanceFromBlockchainInfoByAccount
-} = require("./BalanceService");
+const { getBalanceFromBlockchainInfoByAccount} = require("./BalanceService");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
@@ -26,6 +23,8 @@ if(process.env.BITCOIN_MAIN_NETWORK === 1){
 }else{
     BTCNetWork = bitcoin.networks.testnet;
 }
+
+const BLOCKCYPHER = process.env.BLOCKCYPHER;
 
 
 const BTCService = 
@@ -102,18 +101,17 @@ const BTCService =
         try {
             txb.sign(0, keyPair, p2sh.redeem.output, null, totalBalance);
             let txhex = txb.build().toHex();
-            console.log("왜또 ㅡㅡ ===> " + txhex)
+            console.log(txhex)
             
-        // BROADCAST(PUSH) the Transaction to the Mainnet(or testnet)
             await axios({
                 method: 'post',
-                url: 'https://api.blockcypher.com/v1/btc/test3/txs/push',
+                url: BLOCKCYPHER+'/txs/push',
                 data: {
                   "tx": txhex
                 }
             })
             .then(result => {
-                console.log("결과======> " + result)
+                console.log( result)
                 return JSON.parse(result)
             })
             .catch(error => {
