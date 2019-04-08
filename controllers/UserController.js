@@ -515,44 +515,64 @@ exports.forgetPassword = (req, res, next) =>
 */
 exports.forgetPasswordVerify = async (req, res) => 
 {
-  Recovery.findOne({
-    resetPasswordToken: req.params.token, 
-    resetPasswordExpires: { $gt: Date.now() }
-  }, (err, user) => {
-    if (user) 
-    {
-      User.findById(user.userId)
-      .then(result => {
-        let resetPassword = req.body.resetPassword
-        let resetPasswordCheck = req.body.resetPasswordCheck
+  let sToken = req.params.token;
+  let resetPassword = req.body.new_password || req.query.new_password;
+  let resetPasswordCheck = req.body.new_password_confirm || req.query.new_password_confirm;
 
-          if (resetPassword === resetPasswordCheck) {
-            result.setPassword(resetPassword);
-            result.save();
-            // flash('success', 'Password has been changed successfully!');
-            console.log("<<<<<<< SUCCESS >>>>>>>>")
-            return res.json({
-              success: true,
-              message: "Password has been changed successfully!"
-            });
-          } else {
-            return res.json({
-              success: false,
-              message: "Password Check is not same as above."
-            });
-          }
-        
+  if(!sToken){
+    return res.json({
+      success: false,
+      error: "Token parameter is mandatory"
+    });
+  }
+
+  if( !resetPassword || !resetPasswordCheck)
+  {
+    return res.json({
+      success: false,
+      error: "Password and Password Confirmation parameters are mandatory"
+    });
+  }
+
+  if( resetPassword !== resetPasswordCheck)
+  {
+    return res.json({
+      success: false,
+      error: "Passwords parameters do not match."
+    });
+  }
+
+  Recovery.findOne({
+    resetPasswordToken: sToken, 
+    resetPasswordExpires: { $gt: Date.now() },
+    used: false
+  }, (err, oRecovery) => {
+    if (oRecovery) 
+    {
+      User.findById(oRecovery.userId)
+      .then(oUser => 
+        {
+          oUser.setPassword(resetPassword);
+          oUser.save();
+
+          oRecovery.used = true;
+          oRecovery.save();
+          
+          return res.json({
+            success: true,
+            message: "Password has been changed successfully!"
+          });
       })
       .catch(err => {
-        res.json({
-          error: "error exists!!!!"
-        })
+        return res.json({
+          success: false,
+          error: "Some error happened."
+        });
       })
     } else {
-      // flash('error', 'Token Expired! Please, try recovery again.');
-      return res.redirect('/recovery')
+      return res.redirect('/recovery');
     }
-  })
+  });
   
 }
 

@@ -6,6 +6,7 @@ const RecoverySchema = new mongoose.Schema({
         type: String, 
         required: true,
     },
+    used: {type: Boolean, default: false},
     resetPasswordToken: String,
     resetPasswordExpires: Date
 }, {timestamps: true});
