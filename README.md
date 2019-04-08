@@ -64,7 +64,7 @@ ETHERSCAN_API=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
 
 ```
 BITCOIN_MAIN_NETWORK=0
-BLOCKCHAIN_INFO_URL="https://blockchain.info"
+BLOCKCHAIN_INFO_URL="https://testnet.blockchain.info"
 BLOCKCYPHER="https://api.blockcypher.com/v1/btc/test3"
 ```
 
