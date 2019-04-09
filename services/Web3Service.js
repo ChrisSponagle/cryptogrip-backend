@@ -162,7 +162,7 @@ const Web3Service =
             {
                 if(receipt && receipt.status)
                 {
-                    var oTransaction = new Transaction();
+                    let oTransaction = new Transaction();
                     oTransaction.txHash = receipt.transactionHash;
                     oTransaction.from = receipt.from;
                     oTransaction.to = receipt.to;
@@ -170,8 +170,9 @@ const Web3Service =
                     oTransaction.blockNumber = receipt.blockNumber;
                     oTransaction.gas = receipt.gasUsed;
                     oTransaction.gasPrice = receipt.cumulativeGasUsed;
+                    oTransaction.symbol = "INCO";
                     // Time
-                    var date = new Date();
+                    let date = new Date();
                     // Save timestamp without miliseconds
                     oTransaction.timestamp = Math.floor(date.getTime()/1000);
                     if(receipt.contractAddress){
@@ -285,7 +286,7 @@ const Web3Service =
             {
                 if(receipt && receipt.status)
                 {
-                    var oTransaction = new Transaction();
+                    let oTransaction = new Transaction();
                     oTransaction.txHash = receipt.transactionHash;
                     oTransaction.from = receipt.from;
                     oTransaction.to = receipt.to;
@@ -293,8 +294,9 @@ const Web3Service =
                     oTransaction.blockNumber = receipt.blockNumber;
                     oTransaction.gas = receipt.gasUsed;
                     oTransaction.gasPrice = receipt.cumulativeGasUsed;
+                    oTransaction.symbol = "ETH";
                     // Time
-                    var date = new Date();
+                    let date = new Date();
                     // Save timestamp without miliseconds
                     oTransaction.timestamp = Math.floor(date.getTime()/1000);
                     if(receipt.contractAddress){

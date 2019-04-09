@@ -43,11 +43,15 @@ const CryptoParser =
      * 
      * @param {String} contractAddress Address of contract
      */
-    getCoinName: function({contractAddress})
+    getETHCoinName: function({contractAddress})
     {
+        if(contractAddress){
+            contractAddress =  contractAddress.toLowerCase();
+        }
+
         switch(contractAddress)
         {
-            case INCO_CONTRACT:
+            case INCO_CONTRACT.toLowerCase():
             {
                 return "INCO";
             }
@@ -88,6 +92,25 @@ const CryptoParser =
         }
     },
 
+    /**
+     * Check if a symbol is an Etherium Based symbol
+     * 
+     * @param {String} sSymbol 
+     */
+    checkERC20Coin: function(sSymbol)
+    {
+        //TODO: This check should be done against the database not with hardcoded values
+        switch(sSymbol)
+        {
+            case "ETH":
+            case "INCO":
+                return true;
+                break;
+            
+            default:
+                return false;
+        }
+    },
 }
 
 module.exports = CryptoParser; 

@@ -17,13 +17,13 @@ const User = mongoose.model('User');
 const Wallet = mongoose.model('Wallet');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {
-  getTransactionsFromEtherScanByAccount, 
-  getTransactionsFromDbByAccount
+  getTransactions
 } = require("../services/TransactionHistoryService");
 const {
   getETHBalance,
   getBTCBalance,
 } = require("../services/BalanceService");
+const {checkERC20Coin} = require("../services/CryptoParser");
 const {sendCoin} = require("../services/Web3Service");
 
 
@@ -43,7 +43,7 @@ exports.sendCoin = function(req, res, next)
   const wallet = req.body.wallet || req.query.wallet;
 
   // Validate input values
-  var aErrors = checkSendMandatoryFields({coin, amount, wallet});
+  let aErrors = checkSendMandatoryFields({coin, amount, wallet});
   if( Object.keys(aErrors).length ){
     return res.json({
       success: false,
@@ -144,13 +144,14 @@ exports.getUserBalance = function(req, res, next)
  * @param {*} res - Response object
  * @param {*} next 
  */
-exports.getUserTransactionsHistory = function(req, res, next)
+exports.getUserTransactionsHistory = async function(req, res, next)
 {
     // Get values from request
     const sUserId = req.payload.id;
+    let sSymbol = req.body.coin || req.query.coin || null;
 
     User.findById(sUserId)
-    .then(function(user)
+    .then(async function(user)
     {
 
       if(!user)
@@ -166,25 +167,47 @@ exports.getUserTransactionsHistory = function(req, res, next)
         return false;
       }
 
-      // Get transactions already parsed
-      var pParsedTransactions = getTransactionsFromEtherScanByAccount(user.address);
-      pParsedTransactions.then(function(transactions)
+      let aUserWallets = null;
+
+      if( !sSymbol )
       {
-        // If it is not possible to get transactions from EtherScan get it from our database
-        if( !transactions )
+        aUserWallets = await Wallet.find({user: sUserId});
+      }
+      else{
+        sSymbol = sSymbol.toUpperCase();
+
+        // Check if coin request is ERC20 or not
+        if( checkERC20Coin(sSymbol) )
         {
-          pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
-          pParsedDbTransactions.then(function(dbTransactions)
-          {
-            return res.json({success: true,
-                             transactions: dbTransactions});
-          });
+          aUserWallets = await Wallet.find({user: sUserId, type: "ETH"});
         }
         else{
-            return res.json({success: true,
-                             transactions: transactions});  
+          aUserWallets = await Wallet.find({user: sUserId, type: sSymbol});
         }
-      });
+      }
+
+      console.log(aUserWallets); 
+
+      // Get transactions already parsed
+      let pParsedTransactions = await getTransactions(aUserWallets, sSymbol);
+      console.log(pParsedTransactions);
+      // pParsedTransactions.then(function(transactions)
+      // {
+        // // If it is not possible to get transactions from EtherScan get it from our database
+        // if( !transactions )
+        // {
+        //   pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
+        //   pParsedDbTransactions.then(function(dbTransactions)
+        //   {
+            return res.json({success: true,
+                             transactions: pParsedTransactions});
+          // });
+        // }
+        // else{
+            // return res.json({success: true,
+                            //  transactions: transactions});  
+        // }
+      // });
     });
 }
 

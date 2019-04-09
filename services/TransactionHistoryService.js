@@ -17,6 +17,7 @@ const Transaction = mongoose.model('Transaction');
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
+const {getETHCoinName} = require("./CryptoParser");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=txlist&startblock=0&endblock=99999999&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
@@ -24,43 +25,122 @@ const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokentx&contractaddress="
 
 const TransactionHistoryService = 
 {   
+
 	/**
-	 * Get transactions of account on EtherScanIo
+	 * Get transactions for list of accounts
+	 * 
+	 * @param {array} aAccounts 
+	 */
+	getTransactions: function(aAccounts, sSymbol)
+	{
+
+		let aPromises = [];
+		for(let i = 0; i < aAccounts.length; i++)
+		{
+			let aAccount = aAccounts[i];
+			switch(aAccount.type)
+			{
+			 case "ETH":
+				 aPromises.push(TransactionHistoryService.getETHTransactions(aAccount.publicKey, sSymbol));
+				 break;
+			
+			 // Get BTC transactions
+			}
+		}
+
+		return Promise.all(aPromises)
+			.then( function(aTransactions)
+			{
+				return aTransactions.reduce((a, b) => [...a, ...b], []);
+			});		
+	},
+
+	/**
+	 * 
+	 * @param {*} accountNo 
+	 * @param {*} sSymbol 
+	 */
+	getETHTransactions: async function(accountNo, sSymbol)
+	{
+		console.log("GET ETH transactions")
+		return TransactionHistoryService.getTransactionsFromEtherScanByAccount(accountNo, sSymbol)
+			.then(function(transactions)
+			{
+				if( !transactions )
+				{
+					console.log("No Transactions, try DB");
+					return TransactionHistoryService.getTransactionsFromDbByAccount(accountNo, sSymbol);
+				}
+				else{
+					return transactions;
+				}
+			});
+	},
+
+	/**
+	 * Get transactions of account on EtherScanIo for ETH based accounts
 	 * 
 	 * @param {String} accountNo 
 	 */
-    getTransactionsFromEtherScanByAccount: async function (accountNo) 
+    getTransactionsFromEtherScanByAccount: async function (accountNo, sSymbol) 
     {
-		// Parse account to lower case
-		accountNo = accountNo.toLowerCase();
+			// Parse account to lower case
+			accountNo = accountNo.toLowerCase();
 
-        return axios.all([
-			axios.get(ETH_URL+accountNo),
-			axios.get(INCO_URL+accountNo)
+			let oETHCall = null;
+			let oINCOCall =  null;
+
+			// If not specific symbol is requested, gets everything
+			if(!sSymbol)
+			{
+				oETHCall = axios.get(ETH_URL+accountNo);
+				oINCOCall = axios.get(INCO_URL+accountNo);
+			}
+			else{
+				switch(sSymbol){
+					case "ETH":{
+						oETHCall = axios.get(ETH_URL+accountNo);
+						break;
+					}
+					case "INCO":{
+						oINCOCall = axios.get(INCO_URL+accountNo);
+						break;
+					}
+
+					default:
+						break;
+				}
+			}
+			
+      return axios.all([
+				oETHCall,
+				oINCOCall
 		  ])
-		  .then(axios.spread((ethRes, incoRes) => {
-			  const ethData = ethRes.data;
-			  const incoData = incoRes.data;
-			  var transactions = [];
+			.then(axios.spread((ethRes, incoRes) => 
+			{
+			  const ethData = ethRes ? ethRes.data : null;
+				const incoData = incoRes ? incoRes.data : null;
 
-			  if(ethData.status == 1)
+			  let transactions = [];
+
+			  if(ethData && ethData.status == 1)
 			  {
-				transactions = [...transactions,
-							   ...ethData.result]	
+					transactions = [...transactions,
+								   		   ...ethData.result]	
 			  }
 
-			  if(incoData.status == 1)
+			  if(incoData && incoData.status == 1)
 			  {
-				transactions = [...transactions,
-								...incoData.result]	
+					transactions = [...transactions,
+									 			  ...incoData.result]	
 			  }
 
-			  var aParsetTransactions = TransactionHistoryService.parseTransactions(transactions);
+			  let aParsetTransactions = TransactionHistoryService.parseETHTransactions(transactions);
 			  return aParsetTransactions;
 		  }))
 		  .catch(function(e){
-			  console.log("Not possible to get transactions from EtherScan");
-			  console.log(e);
+			  console.error("Not possible to get transactions from EtherScan");
+			  console.error(e.response.data);
 			  return null;
 		  });
 	},
@@ -69,14 +149,20 @@ const TransactionHistoryService =
 	 * Get transactions from database
 	 * 
 	 * @param {String} accountNo 
+	 * @param {String} sSymbol
 	 */
-	getTransactionsFromDbByAccount: function(accountNo)
+	getTransactionsFromDbByAccount: function(accountNo, sSymbol)
 	{
 		// Parse account to lower case
 		accountNo = accountNo.toLowerCase();
 
+		let sSymbolQuery = null;
+		if(sSymbol){
+			sSymbolQuery = {symbol: sSymbol}
+		}
+
 		return Transaction
-		.find()
+		.find(sSymbolQuery)
 		.or([{to: accountNo},  {from:accountNo} ])
 		.sort({timestamp: -1})
 		.then(transactions => {
@@ -97,10 +183,10 @@ const TransactionHistoryService =
 	 * 	front-end will understand
 	 * @param {Array} transactions 
 	 */
-	parseTransactions: function(transactions)
+	parseETHTransactions: function(transactions)
 	{
-		var aTransactions = [];
-		var aSaveTransactions = [];
+		let aTransactions = [];
+		let aSaveTransactions = [];
 
 		transactions
 		// Sort elements in desc order
@@ -110,7 +196,7 @@ const TransactionHistoryService =
 		// Create new elements
 		forEach(element => 
 		{
-			var oTransaction = new Transaction();
+			let oTransaction = new Transaction();
 
 			oTransaction.txHash = element.hash.toLowerCase();
 			oTransaction.from = element.from.toLowerCase();
@@ -125,6 +211,8 @@ const TransactionHistoryService =
 			{
 				oTransaction.contractAddress = element.contractAddress.toLowerCase();
 			}
+
+			oTransaction.symbol = getETHCoinName(element);
 			
 			aSaveTransactions.push(oTransaction);
 			aTransactions.push(oTransaction.toJSON());

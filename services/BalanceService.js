@@ -19,7 +19,7 @@ const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
 const BLOCKCHAIN_INFO_URL = process.env.BLOCKCHAIN_INFO_URL;
-const {parseValue, getCoinName} = require("../services/CryptoParser");
+const {parseValue, getETHCoinName} = require("../services/CryptoParser");
 const {getAccountBalance} = require("./Web3Service");
 
 // Prepare URLs to be called
@@ -74,18 +74,18 @@ const BalanceService =
 	 */
     getBalanceFromEtherScanByAccount : async function (accountNo) 
     {
-        // Parse account to lower case
-		accountNo = accountNo.toLowerCase();
+			// Parse account to lower case
+			accountNo = accountNo.toLowerCase();
 
-		console.log("Getting ETH balance: ");
-		console.log("    URL: ", ETH_URL+accountNo);
+			console.log("Getting ETH balance: ");
+			console.log("    URL: ", ETH_URL+accountNo);
 
-		console.log("Getting INCO balance: ");
-		console.log("    URL: ", INCO_URL+accountNo);
+			console.log("Getting INCO balance: ");
+			console.log("    URL: ", INCO_URL+accountNo);
 
-        return axios.all([
-			axios.get(ETH_URL+accountNo),
-			axios.get(INCO_URL+accountNo)
+			return axios.all([
+				axios.get(ETH_URL+accountNo),
+				axios.get(INCO_URL+accountNo)
 		  ])
 		  .then(axios.spread((ethRes, incoRes) => {
               let ethData = ethRes.data;
@@ -112,31 +112,31 @@ const BalanceService =
 	 */
     getBalanceFromBlockchainInfoByAccount : async function (accountNo) 
     {
-		let addressCall = BTC_URL+accountNo+"?confirmations=6";
+			let addressCall = BTC_URL+accountNo+"?confirmations=6";
 
-		console.log("Getting BTC balance: ");
-		console.log("    URL: " + addressCall);
+			console.log("Getting BTC balance: ");
+			console.log("    URL: " + addressCall);
 
-		return await axios.get(addressCall)
-		.then(oResult => 
-			{
-			let aBTCBalances = [];
-			let iBalance = oResult.data;
-			// Satoshi to BTC
-			let fBalance = parseFloat((iBalance * 0.00000001).toFixed(8))	
+			return await axios.get(addressCall)
+			.then(oResult => 
+				{
+				let aBTCBalances = [];
+				let iBalance = oResult.data;
+				// Satoshi to BTC
+				let fBalance = parseFloat((iBalance * 0.00000001).toFixed(8))	
 
-			let aBTCData = {
-				coin: "BTC",
-				balance: fBalance,
-			}
+				let aBTCData = {
+					coin: "BTC",
+					balance: fBalance,
+				}
 
-			aBTCBalances.push(aBTCData);
-			return aBTCBalances;
-		})
-		.catch(err => {
-			console.error("Get balance error:", err);
-			return err;
-		});
+				aBTCBalances.push(aBTCData);
+				return aBTCBalances;
+			})
+			.catch(err => {
+				console.error("Get balance error:", err);
+				return err;
+			});
 	},
 
 	// TODO: Get balance from blockchain
@@ -167,7 +167,7 @@ const BalanceService =
             }
             
             oBalance = {
-                coin: getCoinName(balance),
+                coin: getETHCoinName(balance),
                 balance: balanceValue
             }
 			
