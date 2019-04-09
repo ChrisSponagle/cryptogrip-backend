@@ -136,8 +136,8 @@ exports.getUserBalance = function(req, res, next)
     }
 
     Promise.all([getETHBalance(sUserId), getBTCBalance(sUserId)])
-    .then( (aResults) => {
-      
+    .then( (aResults) => 
+    {
       let aBalances = aResults.reduce((a, b) => [...a, ...b], []);
 
       return res.json({
@@ -197,28 +197,10 @@ exports.getUserTransactionsHistory = async function(req, res, next)
         }
       }
 
-      console.log(aUserWallets); 
-
       // Get transactions already parsed
       let pParsedTransactions = await getTransactions(aUserWallets, sSymbol);
-      console.log(pParsedTransactions);
-      // pParsedTransactions.then(function(transactions)
-      // {
-        // // If it is not possible to get transactions from EtherScan get it from our database
-        // if( !transactions )
-        // {
-        //   pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
-        //   pParsedDbTransactions.then(function(dbTransactions)
-        //   {
-            return res.json({success: true,
-                             transactions: pParsedTransactions});
-          // });
-        // }
-        // else{
-            // return res.json({success: true,
-                            //  transactions: transactions});  
-        // }
-      // });
+      return res.json({success: true,
+                        transactions: pParsedTransactions});
     });
 }
 
