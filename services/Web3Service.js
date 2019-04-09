@@ -36,8 +36,6 @@ const BTC_TOKEN = "BTC";
 
 const Web3Service = 
 {   
-
-
     /**
      * Create new Etherium account(wallet)
      * @return Account

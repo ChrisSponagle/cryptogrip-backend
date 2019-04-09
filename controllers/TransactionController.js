@@ -64,33 +64,44 @@ exports.sendCoin = function(req, res, next)
         }).status(422);
       }
 
-      Wallet.findOne({ user: sUserId, type: coin })
+      // Check if coin is an ERC20 coin, 
+      // if it is, use ETH wallet address
+      let sWalletCoin = coin.toUpperCase();
+      if( checkERC20Coin(sWalletCoin) ){
+        sWalletCoin = "ETH";
+      }
+
+      Wallet.findOne({ user: sUserId, type: sWalletCoin })
         .then(result => {
-          if( (result.publicKey || result.publicKey.toLowerCase()) == (wallet || wallet.toLowerCase()) )
+          // If there is no wallet for this coin
+          if(!result){
+            return res.json({
+              success: false,
+              errors: {message: "Can't find wallet for this coin."}
+            }).status(422);
+          }
+          // Check if transfer is for the same wallet
+          else if( (result.publicKey || result.publicKey.toLowerCase()) == (wallet || wallet.toLowerCase()) )
           {
-            return result.json({
+            return res.json({
               success: false,
               errors: {message: "Can not send coin to same address"}
             }).status(422);
           }
+          else{
+            const pSendCoin = sendCoin({user, wallet, amount, coin}, res);
+            pSendCoin
+            .then(function(err){
+              if(err && err.errors)
+              {
+                return res.json({
+                  success: false,
+                  errors: err.errors
+                });
+              }
+            });
+          }
         })
-        .catch(err => {
-          return res.json({
-            error: err
-          })
-        })
-
-      const pSendCoin = sendCoin({user, wallet, amount, coin}, res);
-      pSendCoin
-      .then(function(err){
-        if(err && err.errors)
-        {
-          return res.json({
-            success: false,
-            errors: err.errors
-          });
-        }
-      })
     });
 }
 
