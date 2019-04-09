@@ -89,11 +89,11 @@ const Web3Service =
         
         let bPublicKey = senderWallet.publicKey
 
-        var contract_buf = new web3.eth.Contract(ABI, INCO_CONTRACT);
-        var amountFee = (web3.utils.toWei(amount.toString())).toString();
+        let contract_buf = new web3.eth.Contract(ABI, INCO_CONTRACT);
+        let amountFee = (web3.utils.toWei(amount.toString())).toString();
 
-        var nonce = null;
-        var txData = null;
+        let nonce = null;
+        let txData = null;
 
         // Prepare contract to be used
         try{
@@ -112,11 +112,11 @@ const Web3Service =
         }
         
         // Get gas price
-        var gasPriceWeb3 = await web3.eth.getGasPrice();
-        var gasPrice = new BigNumber(gasPriceGlobal);
+        let gasPriceWeb3 = await web3.eth.getGasPrice();
+        let gasPrice = new BigNumber(gasPriceGlobal);
         
         // Calculate amount in Ether value
-        var calculatedAmount = amount * (10 ** INCO_DECIMALS);
+        let calculatedAmount = amount * (10 ** INCO_DECIMALS);
 
         if ( gasPrice.isLessThan(gasPriceWeb3) )
         {
@@ -124,7 +124,7 @@ const Web3Service =
         } 
         
         // Prepare transaction data for contract
-        var txParams = {
+        let txParams = {
             nonce: web3.utils.toHex(nonce),
             from: bPublicKey,
             to: contract_buf._address,
@@ -134,7 +134,7 @@ const Web3Service =
             data: txData,
         };
 
-        var tx = null;
+        let tx = null;
         try{
             tx = new Tx(txParams);
         }catch(err){
@@ -145,7 +145,7 @@ const Web3Service =
         // Sign transaction with private key, so it is valid for the blockchain
         tx.sign(EthUtil.toBuffer(privateKey));
 
-        var serializedTx = tx.serialize();
+        let serializedTx = tx.serialize();
 
         web3.eth
             // Try to place transaction
@@ -254,7 +254,7 @@ const Web3Service =
             value: web3.utils.toHex(calculatedAmount),
         };
 
-        var tx = null;
+        let tx = null;
         try{
             tx = await new Tx(txParams);
         } catch(err){
@@ -267,7 +267,7 @@ const Web3Service =
         // Sign transaction with private key, so it is valid for the blockchain
         tx.sign(EthUtil.toBuffer(privateKey));
 
-        var serializedTx = tx.serialize();
+        let serializedTx = tx.serialize();
 
         web3.eth
             // Try to place transaction

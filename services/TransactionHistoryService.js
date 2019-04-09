@@ -114,14 +114,15 @@ const TransactionHistoryService =
 
 			oTransaction.txHash = element.hash.toLowerCase();
 			oTransaction.from = element.from.toLowerCase();
-  			oTransaction.to = element.to.toLowerCase();
-  			oTransaction.value = element.value;
-  			oTransaction.blockNumber = element.blockNumber;
-  			oTransaction.gas = element.gas;
+  		oTransaction.to = element.to.toLowerCase();
+  		oTransaction.value = element.value;
+  		oTransaction.blockNumber = element.blockNumber;
+  		oTransaction.gas = element.gas;
 			oTransaction.gasPrice = element.gasPrice;
 			oTransaction.timestamp = element.timeStamp;
 			
-			if(element.contractAddress != ""){
+			if(element.contractAddress != "")
+			{
 				oTransaction.contractAddress = element.contractAddress.toLowerCase();
 			}
 			

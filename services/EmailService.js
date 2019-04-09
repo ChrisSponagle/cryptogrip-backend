@@ -89,8 +89,8 @@ const EmailService =
             return true;
         } catch(err) {
             console.error("Error when sending email: ");
-            console.error("This is host>>>" + host);
-            console.error("SEND MAIL ERROR:>>>>> " + err);
+            console.error("Host:", host);
+            console.error("SEND MAIL ERROR: ",  err);
         }
     },
 };
