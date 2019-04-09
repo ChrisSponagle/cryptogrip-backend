@@ -47,21 +47,6 @@ const BTCService =
     
         let pass = { privateKey, address }
         return pass;
-
-        // const keyPair = bitcoin.ECPair.makeRandom({ network: TESTNET });
-        // let privateKey = keyPair.toWIF();
-        // // console.log()
-        // // const publicKey = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey });
-        // let publicKey = keyPair.publicKey; 
-        // // let publicKey = Buffer.from(keyPair.publicKey, 'hex');
-        // let { address } = bitcoin.payments.p2pkh({ pubkey: publicKey, network: TESTNET });
-        // // let pubKey = keyPair.ECPair.fromPublicKey();
-        // // var redeemScript = bitcoin.script.witnessPubKeyHash.output.encode(bitcoin.crypto.hash160(pubKey));
-        // // var scriptPubKey = bitcoin.script.scriptHash.output.encode(bitcoin.crypto.hash160(redeemScript));
-        // // var publicKey = bitcoin.address.fromOutputScript(scriptPubKey);
-        // // let publicKey = key.pub.getAddress().toString();
-        // let pass = { publicKey, privateKey, address }
-        // return pass;
     },
 
     /**
@@ -72,8 +57,6 @@ const BTCService =
     */
    sendBtcCoin: async function({user, wallet, amount}, res)
    {
-        // fee? should be defined? (if fee is so cheap, transaction is never gonna be confirmed)
-
         // Create (and broadcast via 3PBP) a Transaction, w/ a P2SH(P2WPKH) input
         let senderWallet = await Wallet.findOne({ user: user, type: 'BTC' })
         let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
@@ -83,7 +66,7 @@ const BTCService =
         // Building Transaction(To Send)
         let txb = new bitcoin.TransactionBuilder(BTCNetWork);
 
-        // // Find out the Total amount | amount to Keep
+        // Find out the Total amount | amount to Keep
         let Balance = await getBalanceFromBlockchainInfoByAccount(senderWallet.publicKey)
         let txid = Balance.txid; // hash of previous transaction
         let oIndex = Balance.oIndex;   // previous transaction input's index of sender address

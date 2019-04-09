@@ -12,6 +12,8 @@
 	Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
+const mongoose = require('mongoose');
+const Wallet = mongoose.model('Wallet');
 const axios = require("axios");
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
@@ -27,6 +29,44 @@ const BTC_URL = BLOCKCHAIN_INFO_URL+"/q/addressbalance/";
 
 const BalanceService = 
 {  
+	/**
+	 * 
+	 * @param {*} iUserId 
+	 */
+	getETHBalance: async function(iUserId)
+    {
+        return Wallet.findOne({ user: iUserId, type: 'ETH' })
+          .then(res => {
+            let pParsedBalance = BalanceService.getBalanceFromEtherScanByAccount(res.publicKey);
+            return pParsedBalance
+          })
+          .then(balances => {
+            return balances
+          })
+          .catch(err => {
+            console.error("Error retrieving ETH balance: ", err);
+          });
+	},
+
+	/**
+	 * 
+	 * @param {*} iUserId 
+	 */
+	getBTCBalance: async function(iUserId)
+    {
+        return Wallet.findOne({ user: iUserId, type: 'BTC' })
+			.then(res => {
+				let pParsedBalance = BalanceService.getBalanceFromBlockchainInfoByAccount(res.publicKey);
+				return pParsedBalance
+			})
+			.then(balances => {
+				return balances
+			})
+			.catch(err => {
+				console.error("Error retrieving BTC balance: ", err);
+			});
+	},
+
     /**
 	 * Get balances of account on EtherScanIo
 	 * 
@@ -36,6 +76,12 @@ const BalanceService =
     {
         // Parse account to lower case
 		accountNo = accountNo.toLowerCase();
+
+		console.log("Getting ETH balance: ");
+		console.log("    URL: ", ETH_URL+accountNo);
+
+		console.log("Getting INCO balance: ");
+		console.log("    URL: ", INCO_URL+accountNo);
 
         return axios.all([
 			axios.get(ETH_URL+accountNo),
@@ -53,8 +99,8 @@ const BalanceService =
 			  return aParsedBalances;
 		  }))
 		  .catch(function(e){
-			  console.log("Not possible to get balance from EtherScan");
-			  console.log(e);
+			  console.error("Not possible to get balance from EtherScan");
+			  console.error(e);
 			  return null;
 		  });
 	},
@@ -66,29 +112,31 @@ const BalanceService =
 	 */
     getBalanceFromBlockchainInfoByAccount : async function (accountNo) 
     {
-		let addressCall = BTC_URL+accountNo+"?confirmations=6"
-		
+		let addressCall = BTC_URL+accountNo+"?confirmations=6";
+
+		console.log("Getting BTC balance: ");
+		console.log("    URL: " + addressCall);
+
 		return await axios.get(addressCall)
-		.then(res => {
-			let btcBalance = parseFloat((res.data.final_balance * 0.00000001).toFixed(8))	// satoshi to BTC
-			let txid = res.data.txs[0].hash;
-			let oIndex = res.data.txs[0].inputs[0].output_index;
-			let address = res.data.address
+		.then(oResult => 
+			{
+			let aBTCBalances = [];
+			let iBalance = oResult.data;
+			// Satoshi to BTC
+			let fBalance = parseFloat((iBalance * 0.00000001).toFixed(8))	
 
-			let btcData = {
+			let aBTCData = {
 				coin: "BTC",
-				address: address,
-				balance: btcBalance,
-				txid: txid,
-				oIndex: oIndex,
+				balance: fBalance,
 			}
-			return btcData
 
+			aBTCBalances.push(aBTCData);
+			return aBTCBalances;
 		})
 		.catch(err => {
-			console.log("axios error===> " + err)
-			return err
-		})
+			console.error("Get balance error:", err);
+			return err;
+		});
 	},
 
 	// TODO: Get balance from blockchain
@@ -105,14 +153,16 @@ const BalanceService =
 	 */
 	parseBalance: function(balances)
 	{
-		var aBalances = [];
+		let aBalances = [];
 
 		balances
 		// Create new elements
 		.forEach(balance => 
 		{
-			var balanceValue = parseValue(balance, balance.result);
-            if(isNaN(balanceValue)){
+			let balanceValue = parseValue(balance, balance.result);
+
+			if(isNaN(balanceValue))
+			{
                 balanceValue = 0;
             }
             

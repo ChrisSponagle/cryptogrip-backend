@@ -21,9 +21,8 @@ const {
   getTransactionsFromDbByAccount
 } = require("../services/TransactionHistoryService");
 const {
-  getBalanceFromEtherScanByAccount,
-  getBalanceFromBlockchainInfoByAccount,
-  getBalanceFromBlockChain
+  getETHBalance,
+  getBTCBalance,
 } = require("../services/BalanceService");
 const {sendCoin} = require("../services/Web3Service");
 
@@ -92,8 +91,6 @@ exports.sendCoin = function(req, res, next)
           });
         }
       })
-      
-
     });
 }
 
@@ -122,79 +119,21 @@ exports.getUserBalance = function(req, res, next)
     }
 
     // Confim user is fully authenticated
-    if( !isFullyAuthenticated({user, res}) ){
+    if( !isFullyAuthenticated({user, res}) )
+    {
       return false;
     }
 
-
-    // Find wallet address from Wallet DB
-
-      // ETH wallet
-    ethBLC = async () => Wallet.findOne({ user: sUserId, type: 'ETH' })
-          .then(res => {
-            var pParsedBalance = getBalanceFromEtherScanByAccount(res.publicKey);
-            return pParsedBalance
-          })
-          .then(balances => {
-            return balances
-            // console.log("eth Bal=========> " + balances[0].balance)
-            // return res.json({
-            //   "success": true,
-            //   "balance": balances
-            // });
-          })
-          .catch(err => {
-            console.log("eth bal err===========> " + err);
-          })
-
-      // BTC wallet
-    btcBLC = async () => Wallet.findOne({ user: sUserId, type: 'BTC' })
-          .then(res => {
-            let pParsedBalance = getBalanceFromBlockchainInfoByAccount(res.publicKey);
-            return pParsedBalance
-          })
-          .then(balances => {
-            return balances
-          })
-          .catch(err => {
-            console.log("btc bal err===========> " + err);
-          })
-
-      // Bring all coins' balance
-      let ETH_base = await ethBLC();
-      let BTC_base = await btcBLC();
+    Promise.all([getETHBalance(sUserId), getBTCBalance(sUserId)])
+    .then( (aResults) => {
       
+      let aBalances = aResults.reduce((a, b) => [...a, ...b], []);
+
       return res.json({
         "success": true,
-        "balance": { 
-            ETH_base,
-            BTC_base
-        } 
+        "balance": aBalances
       })
-    
-
-     // Get transactions already parsed
-    //  var pParsedBalance = getBalanceFromEtherScanByAccount(ethAddress);
-    //  pParsedBalance.then(function(balances)
-    //  {
-       // If it is not possible to get balance from EtherScan get it from blockchain
-       //TODO: Get balance from blockchain
-      //  if( !balances )
-      //  {
-         
-      //   pParsedBalance = getBalanceFromBlockChain(user.address);
-      //   pParsedBalance.then(function(blockChainBalance)
-      //    {
-      //      return res.json({"success": true,
-      //                       "balance": blockChainBalance});
-      //    });
-      //  }
-      //  else{
-          //  return res.json({"success": true,
-          //                   "balance": balances});  
-      //  }
-    //  });
-    
+    });  
   });
 }
 
