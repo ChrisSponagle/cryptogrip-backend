@@ -17,11 +17,13 @@ const Transaction = mongoose.model('Transaction');
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
+const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
 const {getETHCoinName} = require("./CryptoParser");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=txlist&startblock=0&endblock=99999999&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
 const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokentx&contractaddress="+INCO_CONTRACT+"&page=1&offset=100&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
+const BLOCKCHAIN_INFO_URL = BLOCKCHAIN_INFO+"/rawaddr/";
 
 const TransactionHistoryService = 
 {   
@@ -40,11 +42,15 @@ const TransactionHistoryService =
 			let aAccount = aAccounts[i];
 			switch(aAccount.type)
 			{
+			 // GET ETH based coins
 			 case "ETH":
 				 aPromises.push(TransactionHistoryService.getETHTransactions(aAccount.publicKey, sSymbol));
 				 break;
 			
 			 // Get BTC transactions
+			 case "BTC":
+				aPromises.push(TransactionHistoryService.getBTCTransactions(aAccount.publicKey, sSymbol));
+				break;
 			}
 		}
 
@@ -56,19 +62,20 @@ const TransactionHistoryService =
 	},
 
 	/**
+ 	 * Get BTC transactions using BlockCypher API
 	 * 
-	 * @param {*} accountNo 
-	 * @param {*} sSymbol 
+	 * @param {String} accountNo 
+	 * @param {String} sSymbol 
 	 */
-	getETHTransactions: async function(accountNo, sSymbol)
+	getBTCTransactions: async function(accountNo, sSymbol)
 	{
-		console.log("GET ETH transactions")
-		return TransactionHistoryService.getTransactionsFromEtherScanByAccount(accountNo, sSymbol)
+		console.log("GET BTC transactions")
+		return TransactionHistoryService.getTransactionsFromBlockInfoByAccount(accountNo, sSymbol)
 			.then(function(transactions)
 			{
 				if( !transactions )
 				{
-					console.log("No Transactions, try DB");
+					console.log("No Transactions, try DB for BTC");
 					return TransactionHistoryService.getTransactionsFromDbByAccount(accountNo, sSymbol);
 				}
 				else{
@@ -78,11 +85,49 @@ const TransactionHistoryService =
 	},
 
 	/**
+	 * Get ETH transactions using EtherScan API
+	 * 
+	 * @param {String} accountNo 
+	 * @param {String} sSymbol 
+	 */
+	getETHTransactions: async function(accountNo, sSymbol)
+	{
+		console.log("GET ETH transactions")
+		return TransactionHistoryService.getTransactionsFromEtherScanByAccount(accountNo, sSymbol)
+			.then(function(transactions)
+			{
+				if( !transactions )
+				{
+					console.log("No Transactions, try DB for ETH");
+					return TransactionHistoryService.getTransactionsFromDbByAccount(accountNo, sSymbol);
+				}
+				else{
+					return transactions;
+				}
+			});
+	},
+
+	/**
+	 * 
+	 */
+	getTransactionsFromBlockInfoByAccount: async function(accountNo, sSymbol)
+	{
+		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo;
+		return axios.get(sBtcInfo).then( (oResult) => 
+		{
+			let oTransactions = oResult.data;
+			let aParsedTransactions = TransactionHistoryService.parseBtcTransaction(oTransactions, accountNo);
+			return aParsedTransactions;
+		});
+		// console.log(sBtcInfo);
+	},
+
+	/**
 	 * Get transactions of account on EtherScanIo for ETH based accounts
 	 * 
 	 * @param {String} accountNo 
 	 */
-    getTransactionsFromEtherScanByAccount: async function (accountNo, sSymbol) 
+	getTransactionsFromEtherScanByAccount: async function (accountNo, sSymbol) 
     {
 			// Parse account to lower case
 			accountNo = accountNo.toLowerCase();
@@ -178,9 +223,111 @@ const TransactionHistoryService =
 		});
 	},
 	
+	parseBtcTransaction: function(oTransactions, sAccount)
+	{
+			let aTransactions = [];
+			let aSaveTransactions = [];
+
+			let aRawTransactions = oTransactions.txs;
+
+			aRawTransactions
+			// Sort elements in desc order
+			.sort(function(a, b) {
+				return b.time - a.time;
+			}).
+			// Create new elements
+			forEach(element => 
+			{
+				let oNewTransaction = new Transaction();
+	
+				oNewTransaction.txHash = element.hash;
+				oNewTransaction.from = TransactionHistoryService.getBtcTransactionFrom(element, sAccount);
+				oNewTransaction.to = TransactionHistoryService.getBtcTransactionTo(element, sAccount, oNewTransaction.from);
+				oNewTransaction.blockNumber = element.block_height;
+				oNewTransaction.timestamp = element.time;
+				oNewTransaction.symbol = "BTC";
+				oNewTransaction.value = TransactionHistoryService.getBtcTransactionValue(element, sAccount);
+				oNewTransaction.gas = TransactionHistoryService.getBtcTransactionFee(element);
+				
+				aSaveTransactions.push(oNewTransaction);
+				// aTransactions.push(oNewTransaction.toJSON());
+				aTransactions.push(oNewTransaction);
+			});
+
+			return aTransactions;
+	},
+
+	getBtcTransactionFrom: function(oTransaction, sAccount)
+	{
+		let oInputs = oTransaction.inputs;
+		let sFromAddress = null;
+
+		oInputs.forEach( (element) => 
+		{
+			let sInputAddr = element.prev_out.addr;
+
+			if(sInputAddr){
+				if(sInputAddr == sAccount)
+				{
+					sFromAddress = sAccount;
+					return;
+				}else{
+					sFromAddress = sInputAddr;
+					return;
+				}
+			}
+		});
+
+		return sFromAddress;
+	},
+
+	/**
+	 * 
+	 * @param {*} oTransaction 
+	 * @param {*} sAccount 
+	 * @param {*} sFromAccount 
+	 */
+	getBtcTransactionTo: function(oTransaction, sAccount, sFromAccount)
+	{
+		let oOutputs = oTransaction.out;
+		let sToAddress = null;
+
+		// If the from account is not this account, it means it is the receiver
+		if(sAccount != sFromAccount){
+			return sAccount;
+		}
+
+		oOutputs.forEach( (element) => 
+		{
+			let sOutAddr = element.addr;
+
+			if(sOutAddr){
+				if(sOutAddr == sAccount)
+				{
+					sToAddress = sAccount;
+					return;
+				}
+			}
+		});
+
+		return sToAddress;
+	},
+
+	// https://bitcoin.stackexchange.com/questions/13360/how-are-transaction-fees-calculated-in-raw-transactions
+	getBtcTransactionFee: function(oTransaction)
+	{
+		return 1;
+	},
+
+	getBtcTransactionValue: function(oTransaction, sAccount)
+	{
+		return 1;
+	},
+
 	/**
 	 * Parse transactions from EtherScan to a way that the
 	 * 	front-end will understand
+	 * 
 	 * @param {Array} transactions 
 	 */
 	parseETHTransactions: function(transactions)
