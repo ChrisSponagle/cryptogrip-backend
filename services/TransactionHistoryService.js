@@ -11,6 +11,8 @@
 	Date: 07/12/2018
 *********************************************************/
 
+const mongoose = require('mongoose');
+const Transaction = mongoose.model('Transaction');
 const axios = require("axios");
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
@@ -119,11 +121,17 @@ const TransactionHistoryService =
 		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo;
 		console.log("   URL: ", sBtcInfo);
 
-		return axios.get(sBtcInfo).then( (oResult) => 
+		return axios.get(sBtcInfo)
+		.then( (oResult) => 
 		{
 			let oTransactions = oResult.data;
 			let aParsedTransactions = parseBtcTransaction(oTransactions, accountNo);
 			return aParsedTransactions;
+		})
+		.catch((e) => {
+			console.log("Not possible to get BTC transactions from Blockchain Info.");
+			console.log(e);
+			return null;
 		});
 	},
 
@@ -204,7 +212,7 @@ const TransactionHistoryService =
 	getTransactionsFromDbByAccount: function(accountNo, sSymbol)
 	{
 		// Parse account to lower case
-		accountNo = accountNo.toLowerCase();
+		let accountNoLower = accountNo.toLowerCase();
 
 		let sSymbolQuery = null;
 		if(sSymbol){
@@ -213,7 +221,7 @@ const TransactionHistoryService =
 
 		return Transaction
 		.find(sSymbolQuery)
-		.or([{to: accountNo},  {from:accountNo} ])
+		.or([ {to: accountNoLower},  {from:accountNoLower}, {to: accountNo},  {from:accountNo} ])
 		.sort({timestamp: -1})
 		.then(transactions => {
 				var aTransactions = [];
