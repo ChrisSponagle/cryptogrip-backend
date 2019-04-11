@@ -11,16 +11,14 @@
 	Date: 07/12/2018
 *********************************************************/
 
-const mongoose = require('mongoose');
 const axios = require("axios");
-const Transaction = mongoose.model('Transaction');
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
 const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
 
-const {getETHCoinName} = require("./CryptoParser");
 const {parseBtcTransaction} = require("./BTCService");
+const {parseEthTransactions} = require("./Web3Service");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=txlist&startblock=0&endblock=99999999&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
@@ -49,7 +47,7 @@ const TransactionHistoryService =
 				 aPromises.push(TransactionHistoryService.getETHTransactions(aAccount.publicKey, sSymbol));
 				 break;
 			
-			 // Get BTC transactions
+			 // Get BTC based transactions
 			 case "BTC":
 				aPromises.push(TransactionHistoryService.getBTCTransactions(aAccount.publicKey, sSymbol));
 				break;
@@ -59,7 +57,11 @@ const TransactionHistoryService =
 		return Promise.all(aPromises)
 			.then( function(aTransactions)
 			{
-				return aTransactions.reduce((a, b) => [...a, ...b], []);
+				return aTransactions.reduce((a, b) => [...a, ...b], [])
+					// Sort elemetns by timestamp after merging everything
+					.sort(function(a, b) {
+						return b.timeStamp - a.timeStamp;
+					});
 			});		
 	},
 
@@ -116,14 +118,13 @@ const TransactionHistoryService =
 	{
 		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo;
 		console.log("   URL: ", sBtcInfo);
-		
+
 		return axios.get(sBtcInfo).then( (oResult) => 
 		{
 			let oTransactions = oResult.data;
 			let aParsedTransactions = parseBtcTransaction(oTransactions, accountNo);
 			return aParsedTransactions;
 		});
-		// console.log(sBtcInfo);
 	},
 
 	/**
@@ -167,7 +168,6 @@ const TransactionHistoryService =
 		  ])
 			.then(axios.spread((ethRes, incoRes) => 
 			{
-				console.log(ethRes.data);
 			  const ethData = ethRes ? ethRes.data : null;
 				const incoData = incoRes ? incoRes.data : null;
 
@@ -185,62 +185,14 @@ const TransactionHistoryService =
 									 			  ...incoData.result]	
 			  }
 
-			  let aParsetTransactions = TransactionHistoryService.parseEthTransactions(transactions);
+			  let aParsetTransactions = parseEthTransactions(transactions);
 			  return aParsetTransactions;
 		  }))
-		  // .catch(function(e){
-			//   console.error("Not possible to get transactions from EtherScan");
-			//   console.error(e.response.data);
-			//   return null;
-		  // });
-	},
-
-	/**
-	 * Parse transactions from EtherScan to a way that the
-	 * 	front-end will understand
-	 * 
-	 * @param {Array} transactions 
-	 */
-	parseEthTransactions: function(transactions)
-	{
-		let aTransactions = [];
-		let aSaveTransactions = [];
-
-		transactions
-		// Sort elements in desc order
-		.sort(function(a, b) {
-			return b.timeStamp - a.timeStamp;
-		}).
-		// Create new elements
-		forEach(element => 
-		{
-			let oTransaction = new Transaction();
-
-			oTransaction.txHash = element.hash.toLowerCase();
-			oTransaction.from = element.from.toLowerCase();
-			oTransaction.to = element.to.toLowerCase();
-			oTransaction.value = element.value;
-			oTransaction.blockNumber = element.blockNumber;
-			oTransaction.gas = element.gas;
-			oTransaction.gasPrice = element.gasPrice;
-			oTransaction.timestamp = element.timeStamp;
-			
-			if(element.contractAddress != "")
-			{
-				oTransaction.contractAddress = element.contractAddress.toLowerCase();
-			}
-
-			oTransaction.symbol = getETHCoinName(element);
-			
-			aSaveTransactions.push(oTransaction);
-			aTransactions.push(oTransaction.toJSON());
-		});
-
-		// Save transactions on Mongo asynchronously 
-		TransactionHistoryService.saveTransactions(aSaveTransactions);
-
-		// Return parsed transactions
-		return aTransactions;
+		  .catch(function(e){
+			  console.error("Not possible to get transactions from EtherScan");
+			  console.error(e.response.data);
+			  return null;
+		  });
 	},
 
 	/**
@@ -275,23 +227,6 @@ const TransactionHistoryService =
 			console.log("Error when trying to get transactions from DB: " + error) 
 		});
 	},
-
-	/**
-	 * Save list of transactions on database
-	 * 
-	 * @param {Array} transactions 
-	 */
-	saveTransactions: async function(transactions)
-	{
-		transactions.forEach(element => {
-			element.save(function(err){
-				if(err){
-					console.log("Element already saved");
-					console.log(element);
-				}
-			});
-		});
-	}
 }
 
 module.exports = TransactionHistoryService; 

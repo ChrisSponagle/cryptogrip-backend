@@ -14,7 +14,9 @@
 const mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 const {parseValue, checkERC20Coin} = require("../services/CryptoParser");
+
 const ETHERSCAN_URL = process.env.ETHERSCAN_URL;
+const BLOCKCHAIN_URL = process.env.BLOCKCHAIN_URL;
 
 const TransactionSchema = new mongoose.Schema({
   txHash: { type: String, required: [true, "can not be blank"], index: true} ,
@@ -48,12 +50,15 @@ TransactionSchema.methods.toJSON = function(transaction){
   };
 };
 
-TransactionSchema.methods.getURL = function(transaction){
-  if( checkERC20Coin(this.symbol) ){
+TransactionSchema.methods.getURL = function(transaction)
+{
+  if( checkERC20Coin(this.symbol) )
+  {
     return ETHERSCAN_URL+"/tx/"+this.txHash;
   }
-  else{
-    //TODO: Return correct address for BTC transaction
+  else if (this.symbol == "BTC")
+  {
+    return BLOCKCHAIN_URL+this.txHash;
   }
 }
 

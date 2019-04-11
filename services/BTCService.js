@@ -4,7 +4,7 @@
 
     Service to encapsulate BTC requests
     
-	Version: 2018
+	Version: 2019
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
@@ -15,6 +15,7 @@ const mongoose = require('mongoose');
 const Transaction = mongoose.model('Transaction');
 const axios = require("axios");
 const { getBalanceFromBlockchainInfoByAccount} = require("./BalanceService");
+const {saveTransactions} = require("./TransactionService");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
@@ -26,6 +27,7 @@ if(process.env.BITCOIN_MAIN_NETWORK === 1){
     BTCNetWork = bitcoin.networks.testnet;
 }
 
+//Broadcast URL
 const BLOCKCYPHER = process.env.BLOCKCYPHER;
 
 
@@ -107,38 +109,45 @@ const BTCService =
         }
    },
 
+    /**
+	 * Parse transactions from Bitcoin Info to a way that the
+	 * 	front-end will understand
+	 * 
+	 * @param {Array} transactions 
+	 * @param {String} sAccount
+	 */
    parseBtcTransaction: function(oTransactions, sAccount)
 	{
-			let aTransactions = [];
-			let aSaveTransactions = [];
+		let aTransactions = [];
+		let aSaveTransactions = [];
 
-			let aRawTransactions = oTransactions.txs;
+		let aRawTransactions = oTransactions.txs;
 
-			aRawTransactions
-			// Sort elements in desc order
-			.sort(function(a, b) {
-				return b.time - a.time;
-			}).
-			// Create new elements
-			forEach(element => 
-			{
-				let oNewTransaction = new Transaction();
-	
-				oNewTransaction.txHash = element.hash;
-				oNewTransaction.from = BTCService.getBtcTransactionFrom(element, sAccount);
-				oNewTransaction.to = BTCService.getBtcTransactionTo(element, sAccount, oNewTransaction.from);
-				oNewTransaction.blockNumber = element.block_height;
-				oNewTransaction.timestamp = element.time;
-				oNewTransaction.symbol = "BTC";
-				oNewTransaction.value = BTCService.getBtcTransactionValue(element, sAccount, oNewTransaction);
-				oNewTransaction.gas = BTCService.getBtcTransactionFee(element);
-				
-				aSaveTransactions.push(oNewTransaction);
-				// aTransactions.push(oNewTransaction.toJSON());
-				aTransactions.push(oNewTransaction);
-			});
+		aRawTransactions
+		// Create new elements
+		.forEach(element => 
+		{
+			let oNewTransaction = new Transaction();
 
-			return aTransactions;
+			oNewTransaction.txHash = element.hash;
+			oNewTransaction.from = BTCService.getBtcTransactionFrom(element, sAccount);
+			oNewTransaction.to = BTCService.getBtcTransactionTo(element, sAccount, oNewTransaction.from);
+			oNewTransaction.blockNumber = element.block_height;
+			oNewTransaction.timestamp = element.time;
+			oNewTransaction.symbol = "BTC";
+			oNewTransaction.value = BTCService.getBtcTransactionValue(element, sAccount, oNewTransaction);
+			oNewTransaction.gas = BTCService.getBtcTransactionFee(element);
+			// BTC is not like ETH that has gas and gas price, so our gas price is always 0
+			oNewTransaction.gasPrice = 0;
+			
+			aSaveTransactions.push(oNewTransaction);
+			aTransactions.push(oNewTransaction.toJSON());
+		});
+
+		// Save transactions on Mongo asynchronously 
+		saveTransactions(aSaveTransactions);
+
+		return aTransactions;
 	},
 
 	/**
@@ -204,10 +213,39 @@ const BTCService =
 		return sToAddress;
     },
     
-	// https://bitcoin.stackexchange.com/questions/13360/how-are-transaction-fees-calculated-in-raw-transactions
+	/**
+	 * Calculate transaction fee.
+	 *  Formula: https://bitcoin.stackexchange.com/questions/13360/how-are-transaction-fees-calculated-in-raw-transactions
+	 * 
+	 * @param {Object} oTransaction 
+	 */
 	getBtcTransactionFee: function(oTransaction)
 	{
-		return 1;
+		let oInputs = oTransaction.inputs;
+		let oOutputs = oTransaction.out;
+
+		let iInputValue = 0;
+		let iOutputValue = 0;
+
+		oInputs.forEach( (element) => 
+		{
+			let iElementInputValue = element.prev_out.value;
+
+			if(iElementInputValue){
+				iInputValue += iElementInputValue;
+			}
+		});
+
+		oOutputs.forEach( (element) => 
+		{
+			let iElementOutputValue = element.value;
+
+			if(iElementOutputValue){
+				iOutputValue += iElementOutputValue;
+			}
+		});
+
+		return iInputValue - iOutputValue;
 	},
 
 	/**

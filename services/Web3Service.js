@@ -25,6 +25,8 @@ const ABI = require("../util/abi.json");
 const gasPriceGlobal = new BigNumber(450000);
 
 const {sendBtcCoin} = require("./BTCService");
+const {saveTransactions} = require("./TransactionService");
+const {getETHCoinName} = require("./CryptoParser");
 
 // TODO: Later this information should come dinamically from database
 const INCO_CONTRACT = process.env.INCO_TOKEN;
@@ -328,8 +330,6 @@ const Web3Service =
 	 */
 	parseEthTransactions: function(transactions)
 	{
-        console.log("HERE");
-        console.log(transactions);
 		let aTransactions = [];
 		let aSaveTransactions = [];
 
@@ -345,10 +345,10 @@ const Web3Service =
 
 			oTransaction.txHash = element.hash.toLowerCase();
 			oTransaction.from = element.from.toLowerCase();
-            oTransaction.to = element.to.toLowerCase();
-            oTransaction.value = element.value;
-            oTransaction.blockNumber = element.blockNumber;
-            oTransaction.gas = element.gas;
+			oTransaction.to = element.to.toLowerCase();
+			oTransaction.value = element.value;
+			oTransaction.blockNumber = element.blockNumber;
+			oTransaction.gas = element.gas;
 			oTransaction.gasPrice = element.gasPrice;
 			oTransaction.timestamp = element.timeStamp;
 			
