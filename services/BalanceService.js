@@ -53,7 +53,7 @@ const BalanceService =
 	 */
 	getBTCBalance: async function(iUserId)
     {
-        return Wallet.findOne({ user: iUserId, type: 'BTC' })
+      return Wallet.findOne({ user: iUserId, type: 'BTC' })
 			.then(res => {
 				let pParsedBalance = BalanceService.getBalanceFromBlockchainInfoByAccount(res.publicKey);
 				return pParsedBalance

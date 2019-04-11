@@ -13,23 +13,31 @@
 
 const mongoose = require('mongoose');
 const Transaction = mongoose.model('Transaction');
+const Wallet = mongoose.model('Wallet');
 const axios = require("axios");
-const { getBalanceFromBlockchainInfoByAccount} = require("./BalanceService");
 const {saveTransactions} = require("./TransactionService");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
 
 let BTCNetWork;
+let BTCPushtxNetwork;
 if(process.env.BITCOIN_MAIN_NETWORK === 1){
-    BTCNetWork = bitcoin.networks.bitcoin;
+	BTCNetWork = bitcoin.networks.bitcoin;
+	BTCPushtxNetwork = require('blockchain.info/pushtx');
+
 }else{
-    BTCNetWork = bitcoin.networks.testnet;
+	BTCNetWork = bitcoin.networks.testnet;
+	BTCPushtxNetwork = require('blockchain.info/pushtx').usingNetwork(3);
 }
 
 //Broadcast URL
-const BLOCKCYPHER = process.env.BLOCKCYPHER;
+// const BLOCKCYPHER = process.env.BLOCKCYPHER;
+// Fetch latest transaction URL
+const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
 
+// Prepare URLs to be called
+const BLOCKCHAIN_INFO_URL = BLOCKCHAIN_INFO+"/rawaddr/";
 
 const BTCService = 
 { 
@@ -71,14 +79,17 @@ const BTCService =
         let txb = new bitcoin.TransactionBuilder(BTCNetWork);
 
         // Find out the Total amount | amount to Keep
-        let Balance = await getBalanceFromBlockchainInfoByAccount(senderWallet.publicKey)
-        let txid = Balance.txid; // hash of previous transaction
-        let oIndex = Balance.oIndex;   // previous transaction input's index of sender address
-        let totalBalance = await parseInt((Balance.balance * 100000000).toFixed(0));
-        let amountToSend = await parseInt((amount * 100000000).toFixed(0));
-        let fee = 100000
-        let leftOver = totalBalance - amountToSend - fee
-        console.log("Total amount / sent / left over ===> " + totalBalance + ' / ' + amountToSend + ' / ' + typeof(leftOver));
+		let oLastTransaction = await BTCService.getLastTransactionFromBlockInfoByAccount(senderWallet.publicKey);
+		let txid = oLastTransaction.hash; // hash of previous transaction
+        let oIndex = oLastTransaction.tx_index; //oLastTransaction.inputs[0].prev_out.tx_index;   // previous transaction input's index of sender address
+        let totalBalance = oLastTransaction.final_balance; //parseInt((oLastTransaction.final_balance * 100000000).toFixed(0));
+        let amountToSend = parseInt((amount * 100000000).toFixed(0));;
+        let fee = 100000;
+		let leftOver = totalBalance - amountToSend - fee;
+		
+		console.log("Total Balance: ", totalBalance);
+		console.log("Amount to send:", amountToSend);
+		console.log("Left: ", leftOver);
         
         // Sending Coin
         txb.addInput(txid, oIndex);
@@ -87,27 +98,46 @@ const BTCService =
 
         try {
             txb.sign(0, keyPair, p2sh.redeem.output, null, totalBalance);
-            let txhex = txb.build().toHex();
-            console.log(txhex)
-            
-            await axios({
-                method: 'post',
-                url: BLOCKCYPHER+'/txs/push',
-                data: {
-                  "tx": txhex
-                }
-            })
-            .then(result => {
-                console.log( result)
-                return JSON.parse(result)
-            })
-            .catch(error => {
-                console.log(" ERR(after .then) =====> " + error)
-            })
+			let txhex = txb.build().toHex();
+
+			console.log(txhex);
+			
+			BTCPushtxNetwork.pushtx(txhex, null)
+			.catch(err => {
+				console.log(err);
+			});
+  
         } catch(err) {
             console.log("ERR(try_catch) is =====> " + err)
         }
    },
+
+   	/**
+	 * 
+	 */
+	getLastTransactionFromBlockInfoByAccount: async function(accountNo)
+	{
+		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo+"?limit=1";
+		console.log("   URL: ", sBtcInfo);
+
+		return axios.get(sBtcInfo)
+		.then( (oResult) => 
+		{	
+			let aTransactions = oResult.data.txs;
+			if(aTransactions)
+			{
+				aTransactions[0].final_balance = oResult.data.final_balance;
+				return aTransactions[0];
+			}
+
+			return null;
+		})
+		.catch((e) => {
+			console.log("Not possible to get BTC transactions from Blockchain Info.");
+			console.log(e);
+			return null;
+		});
+	},
 
     /**
 	 * Parse transactions from Bitcoin Info to a way that the
