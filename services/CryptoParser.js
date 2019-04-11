@@ -82,11 +82,11 @@ const CryptoParser =
     /**
      * Parse value from BTC based coin into a redable value
      * 
-     * @param {String} value 
+     * @param {BigInteger} value 
      */
     parseBtcValue: function(value)
     {
-        let oValue = new BigNumber(value* 0.00000001); // Satoshi to BTC
+        let oValue = new BigNumber(value * 0.00000001); // Satoshi to BTC
         return oValue.toFixed();
     },
 
