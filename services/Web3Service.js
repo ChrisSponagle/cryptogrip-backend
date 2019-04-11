@@ -33,7 +33,6 @@ const INCO_TOKEN = "INCO";
 const INCO_DECIMALS = process.env.INCO_DECIMALS;
 const BTC_TOKEN = "BTC";
 
-
 const Web3Service = 
 {   
     /**
@@ -320,6 +319,56 @@ const Web3Service =
                 return err;
             });  
     },
+
+    /**
+	 * Parse transactions from EtherScan to a way that the
+	 * 	front-end will understand
+	 * 
+	 * @param {Array} transactions 
+	 */
+	parseEthTransactions: function(transactions)
+	{
+        console.log("HERE");
+        console.log(transactions);
+		let aTransactions = [];
+		let aSaveTransactions = [];
+
+		transactions
+		// Sort elements in desc order
+		.sort(function(a, b) {
+			return b.timeStamp - a.timeStamp;
+		}).
+		// Create new elements
+		forEach(element => 
+		{
+			let oTransaction = new Transaction();
+
+			oTransaction.txHash = element.hash.toLowerCase();
+			oTransaction.from = element.from.toLowerCase();
+            oTransaction.to = element.to.toLowerCase();
+            oTransaction.value = element.value;
+            oTransaction.blockNumber = element.blockNumber;
+            oTransaction.gas = element.gas;
+			oTransaction.gasPrice = element.gasPrice;
+			oTransaction.timestamp = element.timeStamp;
+			
+			if(element.contractAddress != "")
+			{
+				oTransaction.contractAddress = element.contractAddress.toLowerCase();
+			}
+
+			oTransaction.symbol = getETHCoinName(element);
+			
+			aSaveTransactions.push(oTransaction);
+			aTransactions.push(oTransaction.toJSON());
+		});
+
+		// Save transactions on Mongo asynchronously 
+		saveTransactions(aSaveTransactions);
+
+		// Return parsed transactions
+		return aTransactions;
+	},
 
     //TODO: Get balance from blockchian based on contract address and account address
     getAccountBalance: function(accountNo, contractAddress = null)

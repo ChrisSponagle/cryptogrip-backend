@@ -11,6 +11,8 @@
     Date: 08/04/2019
 *********************************************************/
 
+const mongoose = require('mongoose');
+const Transaction = mongoose.model('Transaction');
 const axios = require("axios");
 const { getBalanceFromBlockchainInfoByAccount} = require("./BalanceService");
 
@@ -103,8 +105,108 @@ const BTCService =
         } catch(err) {
             console.log("ERR(try_catch) is =====> " + err)
         }
-        
    },
+
+   parseBtcTransaction: function(oTransactions, sAccount)
+	{
+			let aTransactions = [];
+			let aSaveTransactions = [];
+
+			let aRawTransactions = oTransactions.txs;
+
+			aRawTransactions
+			// Sort elements in desc order
+			.sort(function(a, b) {
+				return b.time - a.time;
+			}).
+			// Create new elements
+			forEach(element => 
+			{
+				let oNewTransaction = new Transaction();
+	
+				oNewTransaction.txHash = element.hash;
+				oNewTransaction.from = BTCService.getBtcTransactionFrom(element, sAccount);
+				oNewTransaction.to = BTCService.getBtcTransactionTo(element, sAccount, oNewTransaction.from);
+				oNewTransaction.blockNumber = element.block_height;
+				oNewTransaction.timestamp = element.time;
+				oNewTransaction.symbol = "BTC";
+				oNewTransaction.value = BTCService.getBtcTransactionValue(element, sAccount);
+				oNewTransaction.gas = BTCService.getBtcTransactionFee(element);
+				
+				aSaveTransactions.push(oNewTransaction);
+				// aTransactions.push(oNewTransaction.toJSON());
+				aTransactions.push(oNewTransaction);
+			});
+
+			return aTransactions;
+	},
+
+	getBtcTransactionFrom: function(oTransaction, sAccount)
+	{
+		let oInputs = oTransaction.inputs;
+		let sFromAddress = null;
+
+		oInputs.forEach( (element) => 
+		{
+			let sInputAddr = element.prev_out.addr;
+
+			if(sInputAddr){
+				if(sInputAddr == sAccount)
+				{
+					sFromAddress = sAccount;
+					return;
+				}else{
+					sFromAddress = sInputAddr;
+					return;
+				}
+			}
+		});
+
+		return sFromAddress;
+	},
+
+	/**
+	 * 
+	 * @param {*} oTransaction 
+	 * @param {*} sAccount 
+	 * @param {*} sFromAccount 
+	 */
+	getBtcTransactionTo: function(oTransaction, sAccount, sFromAccount)
+	{
+		let oOutputs = oTransaction.out;
+		let sToAddress = null;
+
+		// If the from account is not this account, it means it is the receiver
+		if(sAccount != sFromAccount){
+			return sAccount;
+		}
+
+		oOutputs.forEach( (element) => 
+		{
+			let sOutAddr = element.addr;
+
+			if(sOutAddr){
+				if(sOutAddr == sAccount)
+				{
+					sToAddress = sAccount;
+					return;
+				}
+			}
+		});
+
+		return sToAddress;
+    },
+    
+	// https://bitcoin.stackexchange.com/questions/13360/how-are-transaction-fees-calculated-in-raw-transactions
+	getBtcTransactionFee: function(oTransaction)
+	{
+		return 1;
+	},
+
+	getBtcTransactionValue: function(oTransaction, sAccount)
+	{
+		return 1;
+	},
 }
 
 module.exports = BTCService; 

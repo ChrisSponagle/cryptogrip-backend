@@ -18,7 +18,9 @@ const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
 const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
+
 const {getETHCoinName} = require("./CryptoParser");
+const {parseBtcTransaction} = require("./BTCService");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=txlist&startblock=0&endblock=99999999&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
@@ -116,7 +118,7 @@ const TransactionHistoryService =
 		return axios.get(sBtcInfo).then( (oResult) => 
 		{
 			let oTransactions = oResult.data;
-			let aParsedTransactions = TransactionHistoryService.parseBtcTransaction(oTransactions, accountNo);
+			let aParsedTransactions = parseBtcTransaction(oTransactions, accountNo);
 			return aParsedTransactions;
 		});
 		// console.log(sBtcInfo);
@@ -163,6 +165,7 @@ const TransactionHistoryService =
 		  ])
 			.then(axios.spread((ethRes, incoRes) => 
 			{
+				console.log(ethRes.data);
 			  const ethData = ethRes ? ethRes.data : null;
 				const incoData = incoRes ? incoRes.data : null;
 
@@ -180,14 +183,62 @@ const TransactionHistoryService =
 									 			  ...incoData.result]	
 			  }
 
-			  let aParsetTransactions = TransactionHistoryService.parseETHTransactions(transactions);
+			  let aParsetTransactions = TransactionHistoryService.parseEthTransactions(transactions);
 			  return aParsetTransactions;
 		  }))
-		  .catch(function(e){
-			  console.error("Not possible to get transactions from EtherScan");
-			  console.error(e.response.data);
-			  return null;
-		  });
+		  // .catch(function(e){
+			//   console.error("Not possible to get transactions from EtherScan");
+			//   console.error(e.response.data);
+			//   return null;
+		  // });
+	},
+
+	/**
+	 * Parse transactions from EtherScan to a way that the
+	 * 	front-end will understand
+	 * 
+	 * @param {Array} transactions 
+	 */
+	parseEthTransactions: function(transactions)
+	{
+		let aTransactions = [];
+		let aSaveTransactions = [];
+
+		transactions
+		// Sort elements in desc order
+		.sort(function(a, b) {
+			return b.timeStamp - a.timeStamp;
+		}).
+		// Create new elements
+		forEach(element => 
+		{
+			let oTransaction = new Transaction();
+
+			oTransaction.txHash = element.hash.toLowerCase();
+			oTransaction.from = element.from.toLowerCase();
+			oTransaction.to = element.to.toLowerCase();
+			oTransaction.value = element.value;
+			oTransaction.blockNumber = element.blockNumber;
+			oTransaction.gas = element.gas;
+			oTransaction.gasPrice = element.gasPrice;
+			oTransaction.timestamp = element.timeStamp;
+			
+			if(element.contractAddress != "")
+			{
+				oTransaction.contractAddress = element.contractAddress.toLowerCase();
+			}
+
+			oTransaction.symbol = getETHCoinName(element);
+			
+			aSaveTransactions.push(oTransaction);
+			aTransactions.push(oTransaction.toJSON());
+		});
+
+		// Save transactions on Mongo asynchronously 
+		TransactionHistoryService.saveTransactions(aSaveTransactions);
+
+		// Return parsed transactions
+		return aTransactions;
 	},
 
 	/**
@@ -221,155 +272,6 @@ const TransactionHistoryService =
 		.catch(error => { 
 			console.log("Error when trying to get transactions from DB: " + error) 
 		});
-	},
-	
-	parseBtcTransaction: function(oTransactions, sAccount)
-	{
-			let aTransactions = [];
-			let aSaveTransactions = [];
-
-			let aRawTransactions = oTransactions.txs;
-
-			aRawTransactions
-			// Sort elements in desc order
-			.sort(function(a, b) {
-				return b.time - a.time;
-			}).
-			// Create new elements
-			forEach(element => 
-			{
-				let oNewTransaction = new Transaction();
-	
-				oNewTransaction.txHash = element.hash;
-				oNewTransaction.from = TransactionHistoryService.getBtcTransactionFrom(element, sAccount);
-				oNewTransaction.to = TransactionHistoryService.getBtcTransactionTo(element, sAccount, oNewTransaction.from);
-				oNewTransaction.blockNumber = element.block_height;
-				oNewTransaction.timestamp = element.time;
-				oNewTransaction.symbol = "BTC";
-				oNewTransaction.value = TransactionHistoryService.getBtcTransactionValue(element, sAccount);
-				oNewTransaction.gas = TransactionHistoryService.getBtcTransactionFee(element);
-				
-				aSaveTransactions.push(oNewTransaction);
-				// aTransactions.push(oNewTransaction.toJSON());
-				aTransactions.push(oNewTransaction);
-			});
-
-			return aTransactions;
-	},
-
-	getBtcTransactionFrom: function(oTransaction, sAccount)
-	{
-		let oInputs = oTransaction.inputs;
-		let sFromAddress = null;
-
-		oInputs.forEach( (element) => 
-		{
-			let sInputAddr = element.prev_out.addr;
-
-			if(sInputAddr){
-				if(sInputAddr == sAccount)
-				{
-					sFromAddress = sAccount;
-					return;
-				}else{
-					sFromAddress = sInputAddr;
-					return;
-				}
-			}
-		});
-
-		return sFromAddress;
-	},
-
-	/**
-	 * 
-	 * @param {*} oTransaction 
-	 * @param {*} sAccount 
-	 * @param {*} sFromAccount 
-	 */
-	getBtcTransactionTo: function(oTransaction, sAccount, sFromAccount)
-	{
-		let oOutputs = oTransaction.out;
-		let sToAddress = null;
-
-		// If the from account is not this account, it means it is the receiver
-		if(sAccount != sFromAccount){
-			return sAccount;
-		}
-
-		oOutputs.forEach( (element) => 
-		{
-			let sOutAddr = element.addr;
-
-			if(sOutAddr){
-				if(sOutAddr == sAccount)
-				{
-					sToAddress = sAccount;
-					return;
-				}
-			}
-		});
-
-		return sToAddress;
-	},
-
-	// https://bitcoin.stackexchange.com/questions/13360/how-are-transaction-fees-calculated-in-raw-transactions
-	getBtcTransactionFee: function(oTransaction)
-	{
-		return 1;
-	},
-
-	getBtcTransactionValue: function(oTransaction, sAccount)
-	{
-		return 1;
-	},
-
-	/**
-	 * Parse transactions from EtherScan to a way that the
-	 * 	front-end will understand
-	 * 
-	 * @param {Array} transactions 
-	 */
-	parseETHTransactions: function(transactions)
-	{
-		let aTransactions = [];
-		let aSaveTransactions = [];
-
-		transactions
-		// Sort elements in desc order
-		.sort(function(a, b) {
-			return b.timeStamp - a.timeStamp;
-		}).
-		// Create new elements
-		forEach(element => 
-		{
-			let oTransaction = new Transaction();
-
-			oTransaction.txHash = element.hash.toLowerCase();
-			oTransaction.from = element.from.toLowerCase();
-  		oTransaction.to = element.to.toLowerCase();
-  		oTransaction.value = element.value;
-  		oTransaction.blockNumber = element.blockNumber;
-  		oTransaction.gas = element.gas;
-			oTransaction.gasPrice = element.gasPrice;
-			oTransaction.timestamp = element.timeStamp;
-			
-			if(element.contractAddress != "")
-			{
-				oTransaction.contractAddress = element.contractAddress.toLowerCase();
-			}
-
-			oTransaction.symbol = getETHCoinName(element);
-			
-			aSaveTransactions.push(oTransaction);
-			aTransactions.push(oTransaction.toJSON());
-		});
-
-		// Save transactions on Mongo asynchronously 
-		TransactionHistoryService.saveTransactions(aSaveTransactions);
-
-		// Return parsed transactions
-		return aTransactions;
 	},
 
 	/**
