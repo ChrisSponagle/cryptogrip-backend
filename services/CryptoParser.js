@@ -69,6 +69,34 @@ const CryptoParser =
      * @param {String} value 
      */
     parseValue: function (transaction, value)
+    {   
+       if( CryptoParser.checkERC20Coin(transaction.symbol) )
+       {
+           return CryptoParser.parseEthValue(transaction, value);
+       }
+       else{
+           return CryptoParser.parseBtcValue(value);
+       }
+    },
+
+    /**
+     * Parse value from BTC based coin into a redable value
+     * 
+     * @param {String} value 
+     */
+    parseBtcValue: function(value)
+    {
+        let oValue = new BigNumber(value* 0.00000001); // Satoshi to BTC
+        return oValue.toFixed();
+    },
+
+    /**
+     * Parse value from Etherium based coin into a redable value
+     * 
+     * @param {Transaction} transaction 
+     * @param {String} value 
+     */
+    parseEthValue: function(transaction, value)
     {
         const web3BigNumber = new web3.utils.toBN(value);
         

@@ -115,6 +115,8 @@ const TransactionHistoryService =
 	getTransactionsFromBlockInfoByAccount: async function(accountNo, sSymbol)
 	{
 		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo;
+		console.log("   URL: ", sBtcInfo);
+		
 		return axios.get(sBtcInfo).then( (oResult) => 
 		{
 			let oTransactions = oResult.data;

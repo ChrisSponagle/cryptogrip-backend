@@ -36,7 +36,7 @@ TransactionSchema.plugin(uniqueValidator, {message: 'already exists.'});
 TransactionSchema.methods.toJSON = function(transaction){
   return {
     txHash: this.txHash,
-    details: this.getURL(this),//ETHERSCAN_URL+"/tx/"+this.txHash,
+    details: this.getURL(this),
     from: this.from,
     to: this.to,
     value: parseValue(this, this.value),

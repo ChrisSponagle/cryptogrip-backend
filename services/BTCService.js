@@ -31,12 +31,12 @@ const BLOCKCYPHER = process.env.BLOCKCYPHER;
 
 const BTCService = 
 { 
-    /**
+   /**
      * Create new Bitcoin account(wallet)
      * 
      * @return Account
      */
-    createBtcAccount: async function(){
+   createBtcAccount: async function(){
         // generate a SegWit address (via P2SH)
         
         let privateKey = bitcoin.ECPair.makeRandom({ network: BTCNetWork }).toWIF();
@@ -49,7 +49,7 @@ const BTCService =
     
         let pass = { privateKey, address }
         return pass;
-    },
+   },
 
     /**
      * Send etherium coin to user's account
@@ -130,7 +130,7 @@ const BTCService =
 				oNewTransaction.blockNumber = element.block_height;
 				oNewTransaction.timestamp = element.time;
 				oNewTransaction.symbol = "BTC";
-				oNewTransaction.value = BTCService.getBtcTransactionValue(element, sAccount);
+				oNewTransaction.value = BTCService.getBtcTransactionValue(element, sAccount, oNewTransaction);
 				oNewTransaction.gas = BTCService.getBtcTransactionFee(element);
 				
 				aSaveTransactions.push(oNewTransaction);
@@ -141,6 +141,12 @@ const BTCService =
 			return aTransactions;
 	},
 
+	/**
+	 * Get account that orinated transfer
+	 * 
+	 * @param {Object} oTransaction 
+	 * @param {String} sAccount 
+	 */
 	getBtcTransactionFrom: function(oTransaction, sAccount)
 	{
 		let oInputs = oTransaction.inputs;
@@ -166,6 +172,7 @@ const BTCService =
 	},
 
 	/**
+	 * Get destination account of transfer
 	 * 
 	 * @param {*} oTransaction 
 	 * @param {*} sAccount 
@@ -203,9 +210,75 @@ const BTCService =
 		return 1;
 	},
 
-	getBtcTransactionValue: function(oTransaction, sAccount)
+	/**
+	 * 
+	 * @param {Object} oTransaction 
+	 * @param {String} sAccount 
+	 * @param {Transaction} oNewTransaction 
+	 */
+	getBtcTransactionValue: function(oTransaction, sAccount, oNewTransaction)
 	{
-		return 1;
+		if(oNewTransaction.to == sAccount)	{
+			return BTCService.getBtcTransactionValueReceived(oTransaction, sAccount);
+		}
+
+		return BTCService.getBtcTransactionValueSent(oTransaction, sAccount);
+	},
+
+	/**
+	 * Get value of transaction when the account was the sender
+	 * 
+	 * @param {Object} oTransaction 
+	 * @param {String} sAccount 
+	 */
+	getBtcTransactionValueSent: function(oTransaction, sAccount)
+	{
+		let oInputs = oTransaction.inputs;
+		let iValue = 0;
+
+		oInputs.forEach( (element) => 
+		{
+			let sInputAddr = element.prev_out.addr;
+			let iInputValue = element.prev_out.value;
+
+			if(sInputAddr){
+				if(sInputAddr == sAccount)
+				{
+					iValue = iInputValue;
+					return;
+				}
+			}
+		});
+
+		return iValue;
+	},
+
+	/**
+	 * Get value of transaction when the account was the receiver
+	 * 
+	 * @param {Object} oTransaction 
+	 * @param {String} sAccount 
+	 */
+	getBtcTransactionValueReceived: function(oTransaction, sAccount)
+	{
+		let oInputs = oTransaction.out;
+		let iValue = 0;
+
+		oInputs.forEach( (element) => 
+		{
+			let sInputAddr = element.addr;
+			let iInputValue = element.value;
+
+			if(sInputAddr){
+				if(sInputAddr == sAccount)
+				{
+					iValue = iInputValue;
+					return;
+				}
+			}
+		});
+
+		return iValue;
 	},
 }
 

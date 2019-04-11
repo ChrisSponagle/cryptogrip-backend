@@ -19,8 +19,7 @@ const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
 const BLOCKCHAIN_INFO_URL = process.env.BLOCKCHAIN_INFO_URL;
-const {parseValue, getETHCoinName} = require("../services/CryptoParser");
-const {getAccountBalance} = require("./Web3Service");
+const {parseValue, getETHCoinName, parseBtcValue} = require("../services/CryptoParser");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=balance&tag=latest&apikey="+ETHERSCAN_KEY+"&address=";
@@ -89,10 +88,13 @@ const BalanceService =
 		  ])
 		  .then(axios.spread((ethRes, incoRes) => {
               let ethData = ethRes.data;
-              ethData.contractAddress =  null;
-              let incoData = incoRes.data;
+							ethData.contractAddress =  null;
+							ethData.symbol =  "ETH";
 
-              incoData.contractAddress = INCO_CONTRACT;
+              let incoData = incoRes.data;
+							incoData.contractAddress = INCO_CONTRACT;
+							incoData.symbol = "INCO";
+							
               let aBalances = [ethData, incoData];
 
               let aParsedBalances = BalanceService.parseBalance(aBalances);
@@ -122,8 +124,9 @@ const BalanceService =
 				{
 				let aBTCBalances = [];
 				let iBalance = oResult.data;
+				
 				// Satoshi to BTC
-				let fBalance = parseFloat((iBalance * 0.00000001).toFixed(8))	
+				let fBalance = parseBtcValue(iBalance);
 
 				let aBTCData = {
 					coin: "BTC",
