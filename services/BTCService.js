@@ -19,6 +19,8 @@ const {saveTransactions} = require("./TransactionService");
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
 const regtestUtils = require("./regtest");
+var bigi    = require("bigi");
+var buffer  = require('buffer');
 
 let BTCNetWork;
 let BTCPushtxNetwork;
@@ -70,16 +72,22 @@ const BTCService =
     */
    sendBtcCoin: async function({user, wallet, amount, senderWallet}, res)
    {
+	
+
 		const keyPair = bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
+		const p2pkh = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
 		// console.log(keyPair);
-		const p2pk = bitcoin.payments.p2pk({ pubkey: keyPair.publicKey, network: BTCNetWork })
-		const p2wsh = bitcoin.payments.p2wsh({ redeem: p2pk, network: BTCNetWork })
-		console.log(p2wsh);
-		console.log(p2wsh.address);
-		console.log(p2wsh.output);
-		console.log(p2wsh.input);
+		// console.log("Public key: " , keyPair.publicKey);
+		// const p2pkh = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
+		// const p2pk = bitcoin.payments.p2pk({ pubkey: keyPair.publicKey, network: BTCNetWork });
+		// console.log("P2pk: " , p2pk);
+		// const p2wsh = bitcoin.payments.p2wsh({ redeem: p2pk, network: BTCNetWork });
+		// console.log(p2wsh);
+		// console.log(p2wsh.address);
+		// console.log(p2wsh.output);
+		// console.log(p2wsh.input);
 		// let amountToSend = parseInt((amount * 100000000).toFixed(0));
-		const unspent = await regtestUtils.faucetComplex(keyPair.publicKey, 5e4);
+		const unspent = await regtestUtils.faucet("2My3gStGq1tEpwzQadfpLqhsMNpexajnWz6", 5e4);
 
 		console.log(unspent);
 
@@ -87,12 +95,12 @@ const BTCService =
 		// let fee = parseInt((0.00001 * 100000000).toFixed(0));
 		// XXX: build the Transaction w/ a P2WSH input
 		const txb = new bitcoin.TransactionBuilder(BTCNetWork)
-		txb.addInput(unspent.txId, unspent.vout, null, p2wsh.output) // NOTE: provide the prevOutScript!
+		txb.addInput(unspent.txId, unspent.vout, null, p2pkh.output) // NOTE: provide the prevOutScript!
 		txb.addOutput(wallet, 2e4)
-		txb.sign(0, keyPair, null, null, 5e4, p2wsh.redeem.output) // NOTE: provide a witnessScript!
+		txb.sign(0, keyPair) // NOTE: provide a witnessScript!
 		const tx = txb.build()
 
-		console.log(tx.toHex());
+		// console.log(tx.toHex());
 		// build and broadcast (the P2WSH transaction) to the Bitcoin RegTest network
 		// await regtestUtils.broadcast(tx.toHex())
 
@@ -102,16 +110,12 @@ const BTCService =
 			console.log(err);
 		});
 
-		// await regtestUtils.verify({
-		// 	txId: tx.getId(),
-		// 	address: wallet,
-		// 	vout: 0,
-		// 	value: 2e4
-		// })
-	
-
-
-
+		await regtestUtils.verify({
+			txId: tx.getId(),
+			address: wallet,
+			vout: 0,
+			value: 2e4
+		})
 
         // let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
         // let p2wpkh = await bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
