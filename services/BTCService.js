@@ -13,20 +13,21 @@
 
 const mongoose = require('mongoose');
 const Transaction = mongoose.model('Transaction');
-const Wallet = mongoose.model('Wallet');
 const axios = require("axios");
 const {saveTransactions} = require("./TransactionService");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
+const regtestUtils = require("./regtest");
 
 let BTCNetWork;
 let BTCPushtxNetwork;
-if(process.env.BITCOIN_MAIN_NETWORK === 1){
+
+if(process.env.BITCOIN_MAIN_NETWORK == 1){
 	BTCNetWork = bitcoin.networks.bitcoin;
 	BTCPushtxNetwork = require('blockchain.info/pushtx');
-
-}else{
+}
+else{
 	BTCNetWork = bitcoin.networks.testnet;
 	BTCPushtxNetwork = require('blockchain.info/pushtx').usingNetwork(3);
 }
@@ -67,49 +68,95 @@ const BTCService =
      * @param {user, wallet, amount} 
      * @param {*} res 
     */
-   sendBtcCoin: async function({user, wallet, amount}, res)
+   sendBtcCoin: async function({user, wallet, amount, senderWallet}, res)
    {
-        // Create (and broadcast via 3PBP) a Transaction, w/ a P2SH(P2WPKH) input
-        let senderWallet = await Wallet.findOne({ user: user, type: 'BTC' })
-        let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
-        let p2wpkh = await bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
-        let p2sh = await bitcoin.payments.p2sh({ redeem: p2wpkh, network: BTCNetWork })
+		const keyPair = bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
+		// console.log(keyPair);
+		const p2pk = bitcoin.payments.p2pk({ pubkey: keyPair.publicKey, network: BTCNetWork })
+		const p2wsh = bitcoin.payments.p2wsh({ redeem: p2pk, network: BTCNetWork })
+		console.log(p2wsh);
+		console.log(p2wsh.address);
+		console.log(p2wsh.output);
+		console.log(p2wsh.input);
+		// let amountToSend = parseInt((amount * 100000000).toFixed(0));
+		const unspent = await regtestUtils.faucetComplex(keyPair.publicKey, 5e4);
 
-        // Building Transaction(To Send)
-        let txb = new bitcoin.TransactionBuilder(BTCNetWork);
+		console.log(unspent);
 
-        // Find out the Total amount | amount to Keep
-		let oLastTransaction = await BTCService.getLastTransactionFromBlockInfoByAccount(senderWallet.publicKey);
-		let txid = oLastTransaction.hash; // hash of previous transaction
-        let oIndex = oLastTransaction.tx_index; //oLastTransaction.inputs[0].prev_out.tx_index;   // previous transaction input's index of sender address
-        let totalBalance = oLastTransaction.final_balance; //parseInt((oLastTransaction.final_balance * 100000000).toFixed(0));
-        let amountToSend = parseInt((amount * 100000000).toFixed(0));;
-        let fee = 100000;
-		let leftOver = totalBalance - amountToSend - fee;
-		
-		console.log("Total Balance: ", totalBalance);
-		console.log("Amount to send:", amountToSend);
-		console.log("Left: ", leftOver);
+		// console.log(unspent);
+		// let fee = parseInt((0.00001 * 100000000).toFixed(0));
+		// XXX: build the Transaction w/ a P2WSH input
+		const txb = new bitcoin.TransactionBuilder(BTCNetWork)
+		txb.addInput(unspent.txId, unspent.vout, null, p2wsh.output) // NOTE: provide the prevOutScript!
+		txb.addOutput(wallet, 2e4)
+		txb.sign(0, keyPair, null, null, 5e4, p2wsh.redeem.output) // NOTE: provide a witnessScript!
+		const tx = txb.build()
+
+		console.log(tx.toHex());
+		// build and broadcast (the P2WSH transaction) to the Bitcoin RegTest network
+		// await regtestUtils.broadcast(tx.toHex())
+
+		console.log(BTCPushtxNetwork);
+		BTCPushtxNetwork.pushtx(tx.toHex())
+		.catch(err => {
+			console.log(err);
+		});
+
+		// await regtestUtils.verify({
+		// 	txId: tx.getId(),
+		// 	address: wallet,
+		// 	vout: 0,
+		// 	value: 2e4
+		// })
+	
+
+
+
+
+        // let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
+        // let p2wpkh = await bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
+        // let p2sh = await bitcoin.payments.p2sh({ redeem: p2wpkh, network: BTCNetWork })
+
+        // // Building Transaction(To Send)
+        // let txb = new bitcoin.TransactionBuilder(BTCNetWork);
+
+        // // Find out the Total amount | amount to Keep
+		// let oLastTransaction = await BTCService.getLastTransactionFromBlockInfoByAccount(senderWallet.publicKey);
+		// let txid = oLastTransaction.hash; // hash of previous transaction
+        // let oIndex = oLastTransaction.tx_index; //oLastTransaction.inputs[0].prev_out.tx_index;   // previous transaction input's index of sender address
+        // let totalBalance = oLastTransaction.final_balance; //parseInt((oLastTransaction.final_balance * 100000000).toFixed(0));
         
-        // Sending Coin
-        txb.addInput(txid, oIndex);
-        txb.addOutput(wallet, amountToSend);     // send to recepient
-        txb.addOutput(senderWallet.publicKey, leftOver);    // left over bitcoin should be a fee
+        // let fee = 100000;
+		// let leftOver = totalBalance - amountToSend - fee;
+		
+		// console.log("keyPair: ", keyPair);
+		// console.log("p2wpkh: ", p2wpkh);
+		// console.log("p2sh: ", p2sh);
+		// console.log("txid: ", txid);
+		// console.log("oIndex: ", oIndex);
+		// console.log("Total Balance: ", totalBalance);
+		// console.log("Amount to send:", amountToSend);
+		// console.log("Left: ", leftOver);
+        
+        // // Sending Coin
+        // txb.addInput(txid, oIndex);
+        // txb.addOutput(wallet, amountToSend);     // send to recepient
+        // txb.addOutput(senderWallet.publicKey, leftOver);    // left over bitcoin should be a fee
 
-        try {
-            txb.sign(0, keyPair, p2sh.redeem.output, null, totalBalance);
-			let txhex = txb.build().toHex();
+        // // try {
+        //     txb.sign(0, keyPair, p2sh.redeem.output, null, totalBalance);
+		// 	let txhex = txb.build().toHex();
 
-			console.log(txhex);
+		// 	console.log(txhex);
 			
-			BTCPushtxNetwork.pushtx(txhex, null)
-			.catch(err => {
-				console.log(err);
-			});
+		// 	BTCPushtxNetwork.pushtx(txhex, null)
+			// .catch(err => {
+			// 	console.log(err);
+			// });
   
-        } catch(err) {
-            console.log("ERR(try_catch) is =====> " + err)
-        }
+        // } catch(err) {
+        //     console.log("ERR(try_catch) is =====> " + err)
+        // }
    },
 
    	/**
@@ -123,6 +170,7 @@ const BTCService =
 		return axios.get(sBtcInfo)
 		.then( (oResult) => 
 		{	
+			console.log(oResult);
 			let aTransactions = oResult.data.txs;
 			if(aTransactions)
 			{

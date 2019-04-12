@@ -72,16 +72,16 @@ exports.sendCoin = function(req, res, next)
       }
 
       Wallet.findOne({ user: sUserId, type: sWalletCoin })
-        .then(result => {
+        .then(senderWallet => {
           // If there is no wallet for this coin
-          if(!result){
+          if(!senderWallet){
             return res.json({
               success: false,
               errors: {message: "Can't find wallet for this coin."}
             }).status(422);
           }
           // Check if transfer is for the same wallet
-          else if( (result.publicKey || result.publicKey.toLowerCase()) == (wallet || wallet.toLowerCase()) )
+          else if( (senderWallet.publicKey || senderWallet.publicKey.toLowerCase()) == (wallet || wallet.toLowerCase()) )
           {
             return res.json({
               success: false,
@@ -89,7 +89,7 @@ exports.sendCoin = function(req, res, next)
             }).status(422);
           }
           else{
-            const pSendCoin = sendCoin({user, wallet, amount, coin}, res);
+            const pSendCoin = sendCoin({user, wallet, amount, coin, senderWallet}, res);
             pSendCoin
             .then(function(err){
               if(err && err.errors)

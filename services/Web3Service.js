@@ -52,20 +52,20 @@ const Web3Service =
      * @param {user, wallet, amount, coin} 
      * @param {*} res 
      */
-    sendCoin: function({user, wallet, amount, coin}, res)
+    sendCoin: function({user, wallet, amount, coin, senderWallet}, res)
     {
         switch(coin.toUpperCase())
         {
             case ETH_TOKEN: {
-                return Web3Service.sendEthCoin({user, wallet, amount}, res);
+                return Web3Service.sendEthCoin({user, wallet, amount, senderWallet}, res);
                 break;
             }
             case INCO_TOKEN: {
-                return Web3Service.sendIncoCoin({user, wallet, amount}, res);
+                return Web3Service.sendIncoCoin({user, wallet, amount, senderWallet}, res);
                 break;
             }
             case BTC_TOKEN: {
-                return sendBtcCoin({user, wallet, amount}, res);
+                return sendBtcCoin({user, wallet, amount, senderWallet}, res);
                 break;
             }
 
@@ -80,9 +80,9 @@ const Web3Service =
      * @param {user, wallet, amount} 
      * @param {*} res 
     */
-    sendIncoCoin: async function({user, wallet, amount}, res)
+    sendIncoCoin: async function({user, wallet, amount, senderWallet}, res)
     {
-        let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
+        // let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
         const privateKeyStr = stripHexPrefix(senderWallet.privateKey);
         const privateKey = Buffer.from(privateKeyStr, 'hex');
         
@@ -204,9 +204,9 @@ const Web3Service =
      * @param {user, wallet, amount} 
      * @param {*} res 
      */
-    sendEthCoin: async function({user, wallet, amount}, res)
+    sendEthCoin: async function({user, wallet, amount, senderWallet}, res)
     {
-        let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
+        // let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
         const privateKeyStr = stripHexPrefix(senderWallet.privateKey);
         const privateKey = Buffer.from(privateKeyStr, 'hex');
         
