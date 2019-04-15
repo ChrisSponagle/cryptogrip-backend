@@ -99,7 +99,7 @@ const BTCService =
 		}
 
 		// Output to desired wallet
-		tx.addOutput(wallet, fValueinSatoshis.toFixed(0));
+		tx.addOutput(wallet, Math.round(fValueinSatoshis.toFixed(0)));
 
 		// Output remaining value to same wallet
 		if(fLeftValue > 0)
