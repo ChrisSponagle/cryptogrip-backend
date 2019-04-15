@@ -37,6 +37,16 @@ const UserSchema = new mongoose.Schema({
       type: Boolean,
       default: false
   },
+  // Added back for migration purposes
+  address:{
+      type: String,
+      default: null
+  },
+  privateKey: {
+    type: String,
+    default: null
+  }
+
 }, {timestamps: true});
 
 UserSchema.plugin(uniqueValidator, {message: 'is already taken.'});
