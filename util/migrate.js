@@ -60,10 +60,10 @@ User.find()
             
             oEthWallet.save();
 
-            oUser.privateKey = undefined;
-            oUser.address = undefined;
+            // oUser.privateKey = undefined;
+            // oUser.address = undefined;
 
-            oUser.save();
+            // oUser.save();
         }
     });
 
