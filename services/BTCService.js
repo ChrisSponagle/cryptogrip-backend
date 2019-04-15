@@ -18,9 +18,6 @@ const {saveTransactions} = require("./TransactionService");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
-const regtestUtils = require("./regtest");
-var bigi    = require("bigi");
-var buffer  = require('buffer');
 
 let BTCNetWork;
 let BTCPushtxNetwork;
@@ -49,21 +46,17 @@ const BTCService =
      * 
      * @return Account
      */
-   createBtcAccount: async function(){
+   createBtcAccount: async function()
+   {
         // generate a SegWit address (via P2SH)
-        
-        let privateKey = bitcoin.ECPair.makeRandom({ network: BTCNetWork }).toWIF();
-        
-		let keyPair = await bitcoin.ECPair.fromWIF(privateKey, BTCNetWork);
-
-		let publicKey = keyPair.publicKey;
-        let { address } = await bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork}),
-            network: BTCNetWork
-        });
+		let keyPair = bitcoin.ECPair.makeRandom({ network: BTCNetWork });
+		let privateKey = keyPair.toWIF();
+		let publicKey = keyPair.publicKey.toString('hex');
+		let { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: BTCNetWork });
     
-        let pass = { privateKey, address, publicKey }
-        return pass;
+		let oAccount = { privateKey, address, publicKey }
+
+		return oAccount;
    },
 
     /**
@@ -74,135 +67,30 @@ const BTCService =
     */
    sendBtcCoin: async function({user, wallet, amount, senderWallet}, res)
    {
-		// const keyPair = bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
-		// let { address } = await bitcoin.payments.p2sh({
-        //     redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork}),
-        //     network: BTCNetWork
-        // })
-		// console.log(keyPair);
-		// console.log(keyPair.publicKey.toString('hex'));
-		// console.log(address);
-		// console.log(senderWallet.privateKey);
-		// console.log(keyPair.privateKey.toString('hex'));
-
-		let privateKey = bitcoin.ECPair.makeRandom({ network: BTCNetWork }).toWIF();
-        
-		keyPair = await bitcoin.ECPair.fromWIF(privateKey, BTCNetWork);
-
-		let publicKey = keyPair.publicKey;
-        let { address } = await bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork}),
-            network: BTCNetWork
-		});
+		console.log(senderWallet.privateKey);
+		let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
 		
-		console.log("Created: ");
-		console.log("    PrivateKey:", privateKey);
 		console.log("    PrivateKey:", keyPair.privateKey.toString('hex'));
-		console.log("    Address:", address);
-		console.log("    PublicKey:", publicKey.toString('hex'));
-
-		keyPair = bitcoin.ECPair.fromWIF(privateKey, BTCNetWork);
-		let { addressR } = await bitcoin.payments.p2sh({
-            redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork}),
-            network: BTCNetWork
-		})
-		
-		console.log("Restaured: ");
-		console.log("    PrivateKey:", keyPair.toWIF());
-		console.log("    PrivateKey:", keyPair.privateKey.toString('hex'));
-		console.log(addressR);
 		console.log("    PublicKey:", keyPair.publicKey.toString('hex'));
+
+		let tx = new bitcoin.TransactionBuilder(BTCNetWork);
+
+		tx.setVersion(1);
+		tx.addInput("1f73f5aa139dc813f5c8b7e0c3d90c5b1dc147af009c16344cc87008ee6fb9ad", 1);
+		tx.addInput("eda753494a927c2e1b0c54226f89e03ca2f9ac26311dae6c61824f00e1d6d855", 1);
+		tx.addOutput("2N2MfFPDPnGnPxynRC8qkKCpp2bc9o4L7u3", 1950000);
+		tx.sign(0, keyPair);
+		tx.sign(1, keyPair);
+
+		const txv = tx.build().toHex();
+
+		console.log(txv);
+
 		
-		// console.log(senderWallet.privateKey);
-		
-		
-
-		// const p2pkh = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
-		// console.log(keyPair);
-		// console.log("Public key: " , keyPair.publicKey);
-		// const p2pkh = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
-		// const p2pk = bitcoin.payments.p2pk({ pubkey: keyPair.publicKey, network: BTCNetWork });
-		// console.log("P2pk: " , p2pk);
-		// const p2wsh = bitcoin.payments.p2wsh({ redeem: p2pk, network: BTCNetWork });
-		// console.log(p2wsh);
-		// console.log(p2wsh.address);
-		// console.log(p2wsh.output);
-		// console.log(p2wsh.input);
-		// let amountToSend = parseInt((amount * 100000000).toFixed(0));
-		// const unspent = await regtestUtils.faucet("2My3gStGq1tEpwzQadfpLqhsMNpexajnWz6", 5e4);
-
-		// console.log(unspent);
-
-		// // console.log(unspent);
-		// // let fee = parseInt((0.00001 * 100000000).toFixed(0));
-		// // XXX: build the Transaction w/ a P2WSH input
-		// const txb = new bitcoin.TransactionBuilder(BTCNetWork)
-		// txb.addInput(unspent.txId, unspent.vout, null, p2pkh.output) // NOTE: provide the prevOutScript!
-		// txb.addOutput(wallet, 2e4)
-		// txb.sign(0, keyPair) // NOTE: provide a witnessScript!
-		// const tx = txb.build()
-
-		// // console.log(tx.toHex());
-		// // build and broadcast (the P2WSH transaction) to the Bitcoin RegTest network
-		// // await regtestUtils.broadcast(tx.toHex())
-
-		// console.log(BTCPushtxNetwork);
-		// BTCPushtxNetwork.pushtx(tx.toHex())
-		// .catch(err => {
-		// 	console.log(err);
-		// });
-
-		// await regtestUtils.verify({
-		// 	txId: tx.getId(),
-		// 	address: wallet,
-		// 	vout: 0,
-		// 	value: 2e4
-		// })
-
-        // let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
-        // let p2wpkh = await bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network: BTCNetWork })
-        // let p2sh = await bitcoin.payments.p2sh({ redeem: p2wpkh, network: BTCNetWork })
-
-        // // Building Transaction(To Send)
-        // let txb = new bitcoin.TransactionBuilder(BTCNetWork);
-
-        // // Find out the Total amount | amount to Keep
-		// let oLastTransaction = await BTCService.getLastTransactionFromBlockInfoByAccount(senderWallet.publicKey);
-		// let txid = oLastTransaction.hash; // hash of previous transaction
-        // let oIndex = oLastTransaction.tx_index; //oLastTransaction.inputs[0].prev_out.tx_index;   // previous transaction input's index of sender address
-        // let totalBalance = oLastTransaction.final_balance; //parseInt((oLastTransaction.final_balance * 100000000).toFixed(0));
-        
-        // let fee = 100000;
-		// let leftOver = totalBalance - amountToSend - fee;
-		
-		// console.log("keyPair: ", keyPair);
-		// console.log("p2wpkh: ", p2wpkh);
-		// console.log("p2sh: ", p2sh);
-		// console.log("txid: ", txid);
-		// console.log("oIndex: ", oIndex);
-		// console.log("Total Balance: ", totalBalance);
-		// console.log("Amount to send:", amountToSend);
-		// console.log("Left: ", leftOver);
-        
-        // // Sending Coin
-        // txb.addInput(txid, oIndex);
-        // txb.addOutput(wallet, amountToSend);     // send to recepient
-        // txb.addOutput(senderWallet.publicKey, leftOver);    // left over bitcoin should be a fee
-
-        // // try {
-        //     txb.sign(0, keyPair, p2sh.redeem.output, null, totalBalance);
-		// 	let txhex = txb.build().toHex();
-
-		// 	console.log(txhex);
-			
-		// 	BTCPushtxNetwork.pushtx(txhex, null)
-			// .catch(err => {
-			// 	console.log(err);
-			// });
-  
-        // } catch(err) {
-        //     console.log("ERR(try_catch) is =====> " + err)
-        // }
+		BTCPushtxNetwork.pushtx(txv)
+		.catch(err => {
+			console.log(err);
+		});
    },
 
    	/**

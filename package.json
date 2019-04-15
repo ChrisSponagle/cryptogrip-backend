@@ -26,7 +26,6 @@
     "buffer": "^5.2.1",
     "circular-json": "^0.5.9",
     "cors": "2.8.5",
-    "dhttp": "^3.0.3",
     "dotenv": "^6.0.0",
     "ejs": "2.6.1",
     "errorhandler": "1.5.0",
