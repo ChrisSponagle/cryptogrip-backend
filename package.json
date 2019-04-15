@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "ssh://git@bitbucket.keysupreme.com:7999/in/wallet-api.git"
+    "url": "git@gitlab.keysupre.me:incodium/wallet-api.git"
   },
   "license": "ISC",
   "dependencies": {

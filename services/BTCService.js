@@ -14,7 +14,9 @@
 const mongoose = require('mongoose');
 const Transaction = mongoose.model('Transaction');
 const axios = require("axios");
+const BigNumber =  require('bignumber.js');
 const {saveTransactions} = require("./TransactionService");
+const {parseBtcValue} = require("./CryptoParser");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');
@@ -31,11 +33,8 @@ else{
 	BTCPushtxNetwork = require('blockchain.info/pushtx').usingNetwork(3);
 }
 
-//Broadcast URL
-// const BLOCKCYPHER = process.env.BLOCKCYPHER;
-// Fetch latest transaction URL
+// Fetch last transactions URL
 const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
-
 // Prepare URLs to be called
 const BLOCKCHAIN_INFO_URL = BLOCKCHAIN_INFO+"/rawaddr/";
 
@@ -67,52 +66,131 @@ const BTCService =
     */
    sendBtcCoin: async function({user, wallet, amount, senderWallet}, res)
    {
-		console.log(senderWallet.privateKey);
-		let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
+	   // Parse amount to send
+		let fValueinSatoshis = new BigNumber(amount * 100000000); // BTC to Satoshi
+		let fee = 12000;
+		let fValueWithFee = fValueinSatoshis.plus(fee);
+
+		// Get transactions to use and calculate total value of them
+		let oTransactions = await BTCService.getRawTransactionsFromBlockInfoByAccount(senderWallet.publicKey, fValueWithFee);
+		let aTransactionList = oTransactions.transactions;
+		let fTotalValue = oTransactions.value;
+		let fLeftValue = fTotalValue - fValueWithFee;
 		
-		console.log("    PrivateKey:", keyPair.privateKey.toString('hex'));
-		console.log("    PublicKey:", keyPair.publicKey.toString('hex'));
+		// If there are no transactions it means the account has no funds for this transaction
+		if(!aTransactionList)
+		{
+			return res.json({
+				success: false,
+				errors: {message: "Not enough funds."}
+			});
+		}
 
+		let keyPair = await bitcoin.ECPair.fromWIF(senderWallet.privateKey, BTCNetWork);
+				
+		// Build BTC transaction
 		let tx = new bitcoin.TransactionBuilder(BTCNetWork);
-
 		tx.setVersion(1);
-		tx.addInput("1f73f5aa139dc813f5c8b7e0c3d90c5b1dc147af009c16344cc87008ee6fb9ad", 1);
-		tx.addInput("eda753494a927c2e1b0c54226f89e03ca2f9ac26311dae6c61824f00e1d6d855", 1);
-		tx.addOutput("2N2MfFPDPnGnPxynRC8qkKCpp2bc9o4L7u3", 1950000);
-		tx.sign(0, keyPair);
-		tx.sign(1, keyPair);
+
+		// Build list of inputs
+		for(let i = 0; i < aTransactionList.length; i++)
+		{
+			let aTransaction = aTransactionList[i];
+			tx.addInput(aTransaction.hash, aTransaction.vout);
+		}
+
+		// Output to desired wallet
+		tx.addOutput(wallet, fValueinSatoshis.toNumber());
+
+		// Output remaining value to same wallet
+		if(fLeftValue > 0)
+		{
+			tx.addOutput(senderWallet.publicKey, fLeftValue);
+		}
+
+		// Sign every input
+		for(let i = 0; i < aTransactionList.length; i++)
+		{
+			tx.sign(i, keyPair);
+		}
 
 		const txv = tx.build().toHex();
 
-		console.log(txv);
-
+		console.log("Broadcasting transaction: ");
+		console.log("	Wallet: ", senderWallet.publicKey);
+		console.log("	Transaciton Hex: " ,txv);
 		
 		BTCPushtxNetwork.pushtx(txv)
 		.catch(err => {
 			console.log(err);
+			return res.json({
+				success: false,
+				errors: {message: "No possible to make transaction."}
+			});
+		});
+
+		return res.json({
+			success: true,
+			errors: {message: "Success."}
 		});
    },
 
    	/**
+	 * Get transactions that will be used to send money from the user's account
 	 * 
+	 * @param {String} accountNo
+	 * @param {float} fValue
 	 */
-	getLastTransactionFromBlockInfoByAccount: async function(accountNo)
+	getRawTransactionsFromBlockInfoByAccount: async function(accountNo, fValue)
 	{
-		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo+"?limit=1";
+		console.log(fValue);
+		// Get the last 500 transactions fot this account
+		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo+"?limit=500";
 		console.log("   URL: ", sBtcInfo);
 
 		return axios.get(sBtcInfo)
 		.then( (oResult) => 
 		{	
-			console.log(oResult);
-			let aTransactions = oResult.data.txs;
-			if(aTransactions)
+			if(oResult.data.final_balance < fValue)
 			{
-				aTransactions[0].final_balance = oResult.data.final_balance;
-				return aTransactions[0];
+				console.error("Not enough funds.");
+				return null;
 			}
 
-			return null;
+			let aTransactions = oResult.data.txs;
+			let aTransactionsToUse = [];
+			let fSumValue = 0;
+			let iNoTransactions = aTransactions.length;
+
+			// Goes from oldest one to newest one to use the oldest transactions first
+			for(let i = iNoTransactions; i >= 0; i--)
+			{	
+				if( fValue.isLessThan(fSumValue) )
+				{
+					console.log("Already enoguh funds");
+					break;
+				}
+
+				let oTransaction = aTransactions[i];
+
+				if( !oTransaction )
+				{
+					continue;
+				}
+
+				let aOutputs = oTransaction.out;
+
+				aOutputs.forEach( (oOutput) => {
+					if(oOutput.spent == false && oOutput.addr == accountNo)
+					{
+						oTransaction.vout = oOutput.n;
+						aTransactionsToUse.push(oTransaction);
+						fSumValue = fSumValue + oOutput.value;
+					}
+				});
+			}
+			
+			return { transactions: aTransactionsToUse, value: fSumValue };
 		})
 		.catch((e) => {
 			console.log("Not possible to get BTC transactions from Blockchain Info.");
