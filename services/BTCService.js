@@ -16,7 +16,6 @@ const Transaction = mongoose.model('Transaction');
 const axios = require("axios");
 const BigNumber =  require('bignumber.js');
 const {saveTransactions} = require("./TransactionService");
-const {parseBtcValue} = require("./CryptoParser");
 
 // Bitcoin lib
 const bitcoin = require('bitcoinjs-lib');

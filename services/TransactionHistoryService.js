@@ -68,7 +68,7 @@ const TransactionHistoryService =
 	},
 
 	/**
- 	 * Get BTC transactions using BlockCypher API
+ 	 * Get BTC transactions using Blockchain Info API
 	 * 
 	 * @param {String} accountNo 
 	 * @param {String} sSymbol 
