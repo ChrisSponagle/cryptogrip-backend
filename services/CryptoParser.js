@@ -43,11 +43,15 @@ const CryptoParser =
      * 
      * @param {String} contractAddress Address of contract
      */
-    getCoinName: function({contractAddress})
+    getETHCoinName: function({contractAddress})
     {
+        if(contractAddress){
+            contractAddress =  contractAddress.toLowerCase();
+        }
+
         switch(contractAddress)
         {
-            case INCO_CONTRACT:
+            case INCO_CONTRACT.toLowerCase():
             {
                 return "INCO";
             }
@@ -65,6 +69,34 @@ const CryptoParser =
      * @param {String} value 
      */
     parseValue: function (transaction, value)
+    {   
+       if( CryptoParser.checkERC20Coin(transaction.symbol) )
+       {
+           return CryptoParser.parseEthValue(transaction, value);
+       }
+       else{
+           return CryptoParser.parseBtcValue(value);
+       }
+    },
+
+    /**
+     * Parse value from BTC based coin into a redable value
+     * 
+     * @param {BigInteger} value 
+     */
+    parseBtcValue: function(value)
+    {
+        let oValue = new BigNumber(value * 0.00000001); // Satoshi to BTC
+        return oValue.toFixed();
+    },
+
+    /**
+     * Parse value from Etherium based coin into a redable value
+     * 
+     * @param {Transaction} transaction 
+     * @param {String} value 
+     */
+    parseEthValue: function(transaction, value)
     {
         const web3BigNumber = new web3.utils.toBN(value);
         
@@ -88,6 +120,25 @@ const CryptoParser =
         }
     },
 
+    /**
+     * Check if a symbol is an Etherium Based symbol
+     * 
+     * @param {String} sSymbol 
+     */
+    checkERC20Coin: function(sSymbol)
+    {
+        //TODO: This check should be done against the database not with hardcoded values
+        switch(sSymbol)
+        {
+            case "ETH":
+            case "INCO":
+                return true;
+                break;
+            
+            default:
+                return false;
+        }
+    },
 }
 
 module.exports = CryptoParser; 

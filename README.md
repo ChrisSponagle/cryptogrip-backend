@@ -32,7 +32,9 @@ To get the Node server running locally:
 
 Requests are authenticated using the `Authorization` header with a valid JWT. We define two express middlewares in `routes/auth.js` that can be used to authenticate requests. The `required` middleware configures the `express-jwt` middleware using our application's secret and will return a 401 status code if the request cannot be authenticated. The payload of the JWT can then be accessed from `req.payload` in the endpoint. The `optional` middleware configures the `express-jwt` in the same way as `required`, but will *not* return a 401 status code if the request cannot be authenticated.
 
-## Blockchain 
+## Blockchain
+
+### Etherium
 
 It is possible to use the Ropsten Testnet or the Main Etherium network.
 
@@ -41,7 +43,8 @@ In order to do it, make sure the correct value is set to .env file
 #### Ropsten Network
 
 ```
-ETHERSCAN_API="https://api.etherscan.io/api"
+WEB3_PROVIDER="https://ropsten.infura.io/v3/d92bb372bbe0423a89aabbf883491237"
+ETHERSCAN_API="https://api-ropsten.etherscan.io/api"
 ETHERSCAN_URL="https://ropsten.etherscan.io"
 ETHERSCAN_KEY=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
 ```
@@ -50,6 +53,25 @@ ETHERSCAN_KEY=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
 
 ```
 WEB3_PROVIDER="https://mainnet.infura.io/v3/d92bb372bbe0423a89aabbf883491237"
-ETHERSCAN_URL="http://api.etherscan.io/"
+ETHERSCAN_API="http://api.etherscan.io/"
+ETHERSCAN_URL="https://etherscan.io"
 ETHERSCAN_API=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
+```
+
+### Bitcoin
+
+#### Test Network
+
+```
+BITCOIN_MAIN_NETWORK=0
+BLOCKCHAIN_INFO_URL="https://testnet.blockchain.info"
+BLOCKCYPHER="https://api.blockcypher.com/v1/btc/test3"
+```
+
+#### Main Network
+
+```
+BITCOIN_MAIN_NETWORK=1
+BLOCKCHAIN_INFO_URL="https://blockchain.info"
+BLOCKCYPHER="https://api.blockcypher.com/v1/btc/main"
 ```

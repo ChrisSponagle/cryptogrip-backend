@@ -13,8 +13,10 @@
 
 const mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
-const {parseValue, getCoinName} = require("../services/CryptoParser");
+const {parseValue, checkERC20Coin} = require("../services/CryptoParser");
+
 const ETHERSCAN_URL = process.env.ETHERSCAN_URL;
+const BLOCKCHAIN_URL = process.env.BLOCKCHAIN_URL;
 
 const TransactionSchema = new mongoose.Schema({
   txHash: { type: String, required: [true, "can not be blank"], index: true} ,
@@ -25,6 +27,7 @@ const TransactionSchema = new mongoose.Schema({
   gas: { type: String, required: [true, "can not be blank"], },
   gasPrice: { type: String, default: '' },
   contractAddress: { type: String, default: null, index: true } ,
+  symbol: { type: String, index: true } ,
   timestamp: { type: String, default: '' },
 }, {timestamps: true});
 
@@ -35,16 +38,28 @@ TransactionSchema.plugin(uniqueValidator, {message: 'already exists.'});
 TransactionSchema.methods.toJSON = function(transaction){
   return {
     txHash: this.txHash,
-    details: ETHERSCAN_URL+"/tx/"+this.txHash,
+    details: this.getURL(this),
     from: this.from,
     to: this.to,
     value: parseValue(this, this.value),
     blockNumber: this.blockNumber,
     gas: parseValue(this, this.gas),
     gasPrice: parseValue(this, this.gasPrice),
-    time: this.timestamp, // TODO: Parse to Human???
-    coin: getCoinName(this),
+    time: this.timestamp,
+    symbol: this.symbol,
   };
 };
+
+TransactionSchema.methods.getURL = function(transaction)
+{
+  if( checkERC20Coin(this.symbol) )
+  {
+    return ETHERSCAN_URL+"/tx/"+this.txHash;
+  }
+  else if (this.symbol == "BTC")
+  {
+    return BLOCKCHAIN_URL+this.txHash;
+  }
+}
 
 mongoose.model('Transaction', TransactionSchema);

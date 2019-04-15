@@ -8,21 +8,23 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/12/2018
+  Date: 05/12/2018
+  Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const Wallet = mongoose.model('Wallet');
 const Recovery = mongoose.model('Recovery');
 const passport = require('passport');
 const crypto = require('crypto');
-const {sendVerificationEmail} = require("../services/EmailService");
+const {sendVerificationEmail, sendRecoveryEmail} = require("../services/EmailService");
 const {createEthAccount} = require("../services/Web3Service");
+const {createBtcAccount} = require("../services/BTCService");
 const {getRandomPassphrases, getPassphrase, checkPassphrase} = require("../services/PassphraseService");
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
 const {getVerificationEmailModel} = require("./EmailController");
 // const {generateToken} = require("../services/RecoveryService");
-const {recoveryEmail} = require("../services/RecoveryService");
 const flash = require('express-flash');
 
 /**
@@ -58,24 +60,44 @@ exports.createAccount = function(req, res, next)
 
   // Save new user
   oUser.save()
-    .then(function()
+    .then(async function()
     {
       // Send verification code for email
       sendVerificationEmail({oUser});
 
-      // Create new Eth account
-      var oAccount = createEthAccount();
-      oUser.address = oAccount.address;
-      oUser.privateKey = oAccount.privateKey
+      // Create new Wallet Account
+      let nBtcWallet = await createBtcAccount();
+      let oBtcWallet = await new Wallet({
+        user: oUser._id,
+        type: 'BTC',
+        privateKey: nBtcWallet.privateKey,
+        publicKey: nBtcWallet.address,
+      });
+      
+      oBtcWallet.save();
+
+      let nEthWallet = createEthAccount();
+      let oEthWallet = new Wallet({
+        user: oUser._id,
+        type: 'ETH',
+        privateKey: nEthWallet.privateKey,
+        publicKey: nEthWallet.address
+      });
+
+      oEthWallet.save();
+
 
       // Generate passphrase list for user
       const oPassphrases = getRandomPassphrases(); 
       var sPassphrases = oPassphrases.indexes.join(' ');
       oUser.passphrase = sPassphrases;
       oUser.save();
+
       return res.json({
         success: true,
-        user: oUser.toAuthJSON()
+        user: oUser.toAuthJSON(),
+        btc_wallet_address: oBtcWallet.toJSON(),
+        eth_wallet_address: oEthWallet.toJSON()
       });
     })
     .catch(next);
@@ -90,7 +112,6 @@ exports.createAccount = function(req, res, next)
  */
 exports.loginUser = function(req, res, next)
 {
-
   // Get values from request
   var username = req.body.username || req.query.username;
   var password = req.body.password || req.query.password;
@@ -363,19 +384,19 @@ exports.updateEmail = function(req, res, next)
  * TODO: Remove after Incodium event
  * Get list of accounts created ordered by creation date desc
  */
-exports.getAccounts = function(req, res, next)
-{
-  User.find({}, null, {sort: '-createdAt'}, function(err, docs) { 
-    var aAccounts = [];
-    docs.forEach( account => {
-      var oAccount = {};
-      oAccount.wallet = account.address;
-      oAccount.createdAt = account.createdAt;
-      aAccounts.push(oAccount);
-    });
-    res.json(aAccounts);
-  });
-}
+// exports.getAccounts = function(req, res, next)
+// {
+//   User.find({}, null, {sort: '-createdAt'}, function(err, docs) { 
+//     var aAccounts = [];
+//     docs.forEach( account => {
+//       var oAccount = {};
+//       oAccount.wallet = account.address;
+//       oAccount.createdAt = account.createdAt;
+//       aAccounts.push(oAccount);
+//     });
+//     res.json(aAccounts);
+//   });
+// }
 
 /**
  * Check if mandatory fields are present on request or not.
@@ -418,104 +439,140 @@ const checkEmailField = function({email})
 }
 
 /**
- * Forget Password
- * 190311 cobee
+ * Request an code to reset password
  * 
  * @param {*} req - Request object
  * @param {*} res - Response object
  * @param {*} next 
 */
-exports.forgetPassword = (req, res, next) => {
-  User.findOne({ email: req.body.email || req.query.email }, (err, user) => {
-    if (!user) {
-      flash('error', 'No account with that email address exists.');
+exports.forgetPassword = (req, res, next) => 
+{
+  let sEmail = req.body.email || req.query.email;
+
+  if( !sEmail ){
+    return res.json({
+      success: false,
+      errors: {email: "field is required."}
+    })
+    .status(400);
+  }
+
+  User.findOne({ email: sEmail }, (err, user) => 
+  {
+    if (!user) 
+    {
       return res.json({
-        error: "nothing found."
+        error: "Account not found."
+      });
+    }
+
+    try{
+      crypto.randomBytes(20, async (err, buf) => {
+        const token = buf.toString('hex');
+
+        // Create new recovery token
+        const requestUser = new Recovery({
+          userId: user._id,
+          email: user.email,
+          resetPasswordToken: token,
+          resetPasswordExpires: Date.now() + 3600000  // expires in 1 hour
+        });
+
+        await requestUser.save();
+
+        const sEmail = requestUser.email;
+        const sToken = requestUser.resetPasswordToken;
+
+        await sendRecoveryEmail({sEmail, sToken});
+
+        return res.json({
+          success: true,
+        });
       })
     }
-  })
-  .then(user => {
-    crypto.randomBytes(20, async (err, buf) => {
-      const token = buf.toString('hex');
-      const requestUser = new Recovery({
-        userId: user._id,
-        email: user.email,
-        resetPasswordToken: token,
-        resetPasswordExpires: Date.now() + 3600000  // expires in 1 hour
-      });
-      await requestUser.save();
-
-      const sEmail = requestUser.email;
-      const sToken = requestUser.resetPasswordToken;
-      await recoveryEmail({sEmail, sToken});
-
-      return res.json({
-        success: true,
-      });
-    })
-  })
-  // .then(() => {
-  //   flash('success', 'Recovery email has been sent!');
-  //   res.status(200).json({
-  //     message: "EMAIL SENT!!"
-  //   })
-  // })
-  .catch(err => {
-    console.log(err);
-    res.status(500).json({
-      error: "YOUR ERROR = " + err
-    });
-    res.redirect('/recovery')
+    catch( err )
+    {
+      console.error("Error when creating reset password token.");
+      console.log(err);
+      
+      res.status(500)
+      .json({
+        sucess: false,
+        error: "Some error happened."
+      })
+      .redirect('/recovery');
+    };
   });
-}
+},
 
 
 /**
  * Forget Password Verification Link Email
- * 190311 cobee
  * 
  * @param {*} req - Request object
  * @param {*} res - Response object
  * @param {*} next 
 */
-exports.forgetPasswordVerify = async (req, res) => {
-  Recovery.findOne({
-    resetPasswordToken: req.params.token, 
-    resetPasswordExpires: { $gt: Date.now() }
-  }, (err, user) => {
-    if (user) {
-      User.findById(user.userId)
-      .then(result => {
-        let resetPassword = req.body.resetPassword
-        let resetPasswordCheck = req.body.resetPasswordCheck
+exports.forgetPasswordVerify = async (req, res) => 
+{
+  let sToken = req.params.token;
+  let resetPassword = req.body.new_password || req.query.new_password;
+  let resetPasswordCheck = req.body.new_password_confirm || req.query.new_password_confirm;
 
-          if (resetPassword === resetPasswordCheck) {
-            result.setPassword(resetPassword);
-            result.save();
-            // flash('success', 'Password has been changed successfully!');
-            console.log("<<<<<<< SUCCESS >>>>>>>>")
-            return res.json({
-              success: true,
-              message: "Password has been changed successfully!"
-            });
-          } else {
-            return res.json({
-              success: false,
-              message: "Password Check is not same as above."
-            });
-          }
-        
+  if(!sToken){
+    return res.json({
+      success: false,
+      error: "Token parameter is mandatory"
+    });
+  }
+
+  if( !resetPassword || !resetPasswordCheck)
+  {
+    return res.json({
+      success: false,
+      error: "Password and Password Confirmation parameters are mandatory"
+    });
+  }
+
+  if( resetPassword !== resetPasswordCheck)
+  {
+    return res.json({
+      success: false,
+      error: "Passwords parameters do not match."
+    });
+  }
+
+  Recovery.findOne({
+    resetPasswordToken: sToken, 
+    resetPasswordExpires: { $gt: Date.now() },
+    used: false
+  }, (err, oRecovery) => {
+    if (oRecovery) 
+    {
+      User.findById(oRecovery.userId)
+      .then(oUser => 
+        {
+          oUser.setPassword(resetPassword);
+          oUser.save();
+
+          oRecovery.used = true;
+          oRecovery.save();
+          
+          return res.json({
+            success: true,
+            message: "Password has been changed successfully!"
+          });
       })
       .catch(err => {
-        res.json({
-          error: "error exists!!!!"
-        })
+        return res.json({
+          success: false,
+          error: "Some error happened."
+        });
       })
     } else {
-      // flash('error', 'Token Expired! Please, try recovery again.');
-      return res.redirect('/recovery')
+      return res.redirect('/recovery');
     }
-  })
+  });
   
 }
 

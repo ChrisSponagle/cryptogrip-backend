@@ -11,15 +11,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "ssh://git@bitbucket.keysupreme.com:7999/in/wallet-api.git"
+    "url": "git@gitlab.keysupre.me:incodium/wallet-api.git"
   },
   "license": "ISC",
   "dependencies": {
     "@sendgrid/mail": "^6.3.1",
     "axios": "^0.18.0",
     "bcrypt": "^3.0.1",
+    "bigi": "^1.4.2",
     "bignumber.js": "^8.0.0",
+    "bitcoinjs-lib": "^4.0.3",
+    "blockchain.info": "^2.12.1",
     "body-parser": "1.18.3",
+    "buffer": "^5.2.1",
+    "circular-json": "^0.5.9",
     "cors": "2.8.5",
     "dotenv": "^6.0.0",
     "ejs": "2.6.1",
@@ -41,6 +46,7 @@
     "request": "2.88.0",
     "slug": "0.9.2",
     "strip-hex-prefix": "^1.0.0",
+    "typedarray-to-buffer": "^3.1.5",
     "underscore": "1.9.1",
     "web3": "^1.0.0-beta.36"
   },

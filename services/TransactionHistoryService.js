@@ -12,55 +12,193 @@
 *********************************************************/
 
 const mongoose = require('mongoose');
-const axios = require("axios");
 const Transaction = mongoose.model('Transaction');
+const axios = require("axios");
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
+const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
+
+const {parseBtcTransaction} = require("./BTCService");
+const {parseEthTransactions} = require("./Web3Service");
 
 // Prepare URLs to be called
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=txlist&startblock=0&endblock=99999999&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
 const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokentx&contractaddress="+INCO_CONTRACT+"&page=1&offset=100&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
+const BLOCKCHAIN_INFO_URL = BLOCKCHAIN_INFO+"/rawaddr/";
 
 const TransactionHistoryService = 
 {   
+
 	/**
-	 * Get transactions of account on EtherScanIo
+	 * Get transactions for list of accounts
+	 * 
+	 * @param {array} aAccounts 
+	 */
+	getTransactions: function(aAccounts, sSymbol)
+	{
+
+		let aPromises = [];
+		for(let i = 0; i < aAccounts.length; i++)
+		{
+			let aAccount = aAccounts[i];
+			switch(aAccount.type)
+			{
+			 // GET ETH based coins
+			 case "ETH":
+				 aPromises.push(TransactionHistoryService.getETHTransactions(aAccount.publicKey, sSymbol));
+				 break;
+			
+			 // Get BTC based transactions
+			 case "BTC":
+				aPromises.push(TransactionHistoryService.getBTCTransactions(aAccount.publicKey, sSymbol));
+				break;
+			}
+		}
+
+		return Promise.all(aPromises)
+			.then( function(aTransactions)
+			{
+				return aTransactions.reduce((a, b) => [...a, ...b], [])
+					// Sort elemetns by timestamp after merging everything
+					.sort(function(a, b) {
+						return b.timeStamp - a.timeStamp;
+					});
+			});		
+	},
+
+	/**
+ 	 * Get BTC transactions using BlockCypher API
+	 * 
+	 * @param {String} accountNo 
+	 * @param {String} sSymbol 
+	 */
+	getBTCTransactions: async function(accountNo, sSymbol)
+	{
+		console.log("GET BTC transactions")
+		return TransactionHistoryService.getTransactionsFromBlockInfoByAccount(accountNo, sSymbol)
+			.then(function(transactions)
+			{
+				if( !transactions )
+				{
+					console.log("No Transactions, try DB for BTC");
+					return TransactionHistoryService.getTransactionsFromDbByAccount(accountNo, sSymbol);
+				}
+				else{
+					return transactions;
+				}
+			});
+	},
+
+	/**
+	 * Get ETH transactions using EtherScan API
+	 * 
+	 * @param {String} accountNo 
+	 * @param {String} sSymbol 
+	 */
+	getETHTransactions: async function(accountNo, sSymbol)
+	{
+		console.log("GET ETH transactions")
+		return TransactionHistoryService.getTransactionsFromEtherScanByAccount(accountNo, sSymbol)
+			.then(function(transactions)
+			{
+				if( !transactions )
+				{
+					console.log("No Transactions, try DB for ETH");
+					return TransactionHistoryService.getTransactionsFromDbByAccount(accountNo, sSymbol);
+				}
+				else{
+					return transactions;
+				}
+			});
+	},
+
+	/**
+	 * 
+	 */
+	getTransactionsFromBlockInfoByAccount: async function(accountNo, sSymbol)
+	{
+		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo;
+		console.log("   URL: ", sBtcInfo);
+
+		return axios.get(sBtcInfo)
+		.then( (oResult) => 
+		{
+			let oTransactions = oResult.data;
+			let aParsedTransactions = parseBtcTransaction(oTransactions, accountNo);
+			return aParsedTransactions;
+		})
+		.catch((e) => {
+			console.log("Not possible to get BTC transactions from Blockchain Info.");
+			console.log(e);
+			return null;
+		});
+	},
+
+	/**
+	 * Get transactions of account on EtherScanIo for ETH based accounts
 	 * 
 	 * @param {String} accountNo 
 	 */
-    getTransactionsFromEtherScanByAccount: async function (accountNo) 
+	getTransactionsFromEtherScanByAccount: async function (accountNo, sSymbol) 
     {
-		// Parse account to lower case
-		accountNo = accountNo.toLowerCase();
+			// Parse account to lower case
+			accountNo = accountNo.toLowerCase();
 
-        return axios.all([
-			axios.get(ETH_URL+accountNo),
-			axios.get(INCO_URL+accountNo)
+			let oETHCall = null;
+			let oINCOCall =  null;
+
+			// If not specific symbol is requested, gets everything
+			if(!sSymbol)
+			{
+				oETHCall = axios.get(ETH_URL+accountNo);
+				oINCOCall = axios.get(INCO_URL+accountNo);
+			}
+			else{
+				switch(sSymbol){
+					case "ETH":{
+						oETHCall = axios.get(ETH_URL+accountNo);
+						break;
+					}
+					case "INCO":{
+						oINCOCall = axios.get(INCO_URL+accountNo);
+						break;
+					}
+
+					default:
+						break;
+				}
+			}
+			
+      return axios.all([
+				oETHCall,
+				oINCOCall
 		  ])
-		  .then(axios.spread((ethRes, incoRes) => {
-			  const ethData = ethRes.data;
-			  const incoData = incoRes.data;
-			  var transactions = [];
+			.then(axios.spread((ethRes, incoRes) => 
+			{
+			  const ethData = ethRes ? ethRes.data : null;
+				const incoData = incoRes ? incoRes.data : null;
 
-			  if(ethData.status == 1)
+			  let transactions = [];
+
+			  if(ethData && ethData.status == 1)
 			  {
-				transactions = [...transactions,
-							   ...ethData.result]	
+					transactions = [...transactions,
+								   		   ...ethData.result]	
 			  }
 
-			  if(incoData.status == 1)
+			  if(incoData && incoData.status == 1)
 			  {
-				transactions = [...transactions,
-								...incoData.result]	
+					transactions = [...transactions,
+									 			  ...incoData.result]	
 			  }
 
-			  var aParsetTransactions = TransactionHistoryService.parseTransactions(transactions);
+			  let aParsetTransactions = parseEthTransactions(transactions);
 			  return aParsetTransactions;
 		  }))
 		  .catch(function(e){
-			  console.log("Not possible to get transactions from EtherScan");
-			  console.log(e);
+			  console.error("Not possible to get transactions from EtherScan");
+			  console.error(e.response.data);
 			  return null;
 		  });
 	},
@@ -69,15 +207,21 @@ const TransactionHistoryService =
 	 * Get transactions from database
 	 * 
 	 * @param {String} accountNo 
+	 * @param {String} sSymbol
 	 */
-	getTransactionsFromDbByAccount: function(accountNo)
+	getTransactionsFromDbByAccount: function(accountNo, sSymbol)
 	{
 		// Parse account to lower case
-		accountNo = accountNo.toLowerCase();
+		let accountNoLower = accountNo.toLowerCase();
+
+		let sSymbolQuery = null;
+		if(sSymbol){
+			sSymbolQuery = {symbol: sSymbol}
+		}
 
 		return Transaction
-		.find()
-		.or([{to: accountNo},  {from:accountNo} ])
+		.find(sSymbolQuery)
+		.or([ {to: accountNoLower},  {from:accountNoLower}, {to: accountNo},  {from:accountNo} ])
 		.sort({timestamp: -1})
 		.then(transactions => {
 				var aTransactions = [];
@@ -91,67 +235,6 @@ const TransactionHistoryService =
 			console.log("Error when trying to get transactions from DB: " + error) 
 		});
 	},
-	
-	/**
-	 * Parse transactions from EtherScan to a way that the
-	 * 	front-end will understand
-	 * @param {Array} transactions 
-	 */
-	parseTransactions: function(transactions)
-	{
-		var aTransactions = [];
-		var aSaveTransactions = [];
-
-		transactions
-		// Sort elements in desc order
-		.sort(function(a, b) {
-			return b.timeStamp - a.timeStamp;
-		}).
-		// Create new elements
-		forEach(element => 
-		{
-			var oTransaction = new Transaction();
-
-			oTransaction.txHash = element.hash.toLowerCase();
-			oTransaction.from = element.from.toLowerCase();
-  			oTransaction.to = element.to.toLowerCase();
-  			oTransaction.value = element.value;
-  			oTransaction.blockNumber = element.blockNumber;
-  			oTransaction.gas = element.gas;
-			oTransaction.gasPrice = element.gasPrice;
-			oTransaction.timestamp = element.timeStamp;
-			
-			if(element.contractAddress != ""){
-				oTransaction.contractAddress = element.contractAddress.toLowerCase();
-			}
-			
-			aSaveTransactions.push(oTransaction);
-			aTransactions.push(oTransaction.toJSON());
-		});
-
-		// Save transactions on Mongo asynchronously 
-		TransactionHistoryService.saveTransactions(aSaveTransactions);
-
-		// Return parsed transactions
-		return aTransactions;
-	},
-
-	/**
-	 * Save list of transactions on database
-	 * 
-	 * @param {Array} transactions 
-	 */
-	saveTransactions: async function(transactions)
-	{
-		transactions.forEach(element => {
-			element.save(function(err){
-				if(err){
-					console.log("Element already saved");
-					console.log(element);
-				}
-			});
-		});
-	}
 }
 
 module.exports = TransactionHistoryService; 

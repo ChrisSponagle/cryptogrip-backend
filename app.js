@@ -40,7 +40,7 @@ if(isProduction){
 } 
 else {
   // Test DB address
-  mongoose.connect('mongodb://localhost/ether_wallet', { useNewUrlParser: true });
+  mongoose.connect('mongodb://localhost/inco_wallet', { useNewUrlParser: true });
   mongoose.set('debug', true);
 }
 
@@ -48,6 +48,7 @@ require('./models/User');
 require('./models/VerificationEmail');
 require('./models/Transaction');
 require('./models/Recovery');
+require('./models/Wallet');
 require('./config/passport');
 
 app.use(require('./routes'));

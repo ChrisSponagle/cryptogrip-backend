@@ -8,12 +8,14 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/02/2018
+	Date: 05/12/2018
 *********************************************************/
 
-var mongoose = require('mongoose');
-var VerificationEmailModel = mongoose.model('VerificationEmail');
-var verificationEmail = require("../emails/verificationEmail");
+const mongoose = require('mongoose');
+const VerificationEmailModel = mongoose.model('VerificationEmail');
+const verificationEmail = require("../emails/verificationEmail");
+const recoveryEmail = require("../emails/recoveryEmail");
+
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_KEY);
 
@@ -70,6 +72,26 @@ const EmailService =
             oVerificationEmail.email = newEmail;
         }
         oVerificationEmail.save();
+    },
+
+
+    /**
+     * 
+     * @param {String} sEmail Email to send reset passwor dtoken to.
+     * @param {String} sToken Token to send to user
+     */
+    sendRecoveryEmail: async function({sEmail, sToken})
+    {
+        const msg = recoveryEmail.buildRecoveryEmail({sEmail, sToken});
+        
+        try {
+            await sgMail.send(msg);
+            return true;
+        } catch(err) {
+            console.error("Error when sending email: ");
+            console.error("Host:", host);
+            console.error("SEND MAIL ERROR: ",  err);
+        }
     },
 };
 

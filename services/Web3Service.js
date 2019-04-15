@@ -8,7 +8,8 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 05/12/2018
+    Date: 05/12/2018
+    Updated: 03/2019 | Cobee Kwon
 *********************************************************/
 
 const stripHexPrefix = require('strip-hex-prefix');
@@ -17,22 +18,27 @@ const Web3 = require('web3');
 const Tx = require('ethereumjs-tx');
 const EthUtil = require('ethereumjs-util');
 const mongoose = require('mongoose');
+const Wallet = mongoose.model('Wallet');
 const Transaction = mongoose.model('Transaction')
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WEB3_PROVIDER));
 const ABI = require("../util/abi.json");
 const gasPriceGlobal = new BigNumber(450000);
+
+const {sendBtcCoin} = require("./BTCService");
+const {saveTransactions} = require("./TransactionService");
+const {getETHCoinName} = require("./CryptoParser");
 
 // TODO: Later this information should come dinamically from database
 const INCO_CONTRACT = process.env.INCO_TOKEN;
 const ETH_TOKEN = "ETH";
 const INCO_TOKEN = "INCO";
 const INCO_DECIMALS = process.env.INCO_DECIMALS;
+const BTC_TOKEN = "BTC";
 
 const Web3Service = 
 {   
     /**
-     * Create new Etherium account
-     * 
+     * Create new Etherium account(wallet)
      * @return Account
      */
     createEthAccount: function(){
@@ -46,16 +52,20 @@ const Web3Service =
      * @param {user, wallet, amount, coin} 
      * @param {*} res 
      */
-    sendCoin: function({user, wallet, amount, coin}, res)
+    sendCoin: function({user, wallet, amount, coin, senderWallet}, res)
     {
         switch(coin.toUpperCase())
         {
             case ETH_TOKEN: {
-                return Web3Service.sendEthCoin({user, wallet, amount}, res);
+                return Web3Service.sendEthCoin({user, wallet, amount, senderWallet}, res);
                 break;
             }
             case INCO_TOKEN: {
-                return Web3Service.sendIncoCoin({user, wallet, amount}, res);
+                return Web3Service.sendIncoCoin({user, wallet, amount, senderWallet}, res);
+                break;
+            }
+            case BTC_TOKEN: {
+                return sendBtcCoin({user, wallet, amount, senderWallet}, res);
                 break;
             }
 
@@ -70,38 +80,42 @@ const Web3Service =
      * @param {user, wallet, amount} 
      * @param {*} res 
     */
-    sendIncoCoin: async function({user, wallet, amount}, res)
+    sendIncoCoin: async function({user, wallet, amount, senderWallet}, res)
     {
-        const privateKeyStr = stripHexPrefix(user.privateKey);
+        // let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
+        const privateKeyStr = stripHexPrefix(senderWallet.privateKey);
         const privateKey = Buffer.from(privateKeyStr, 'hex');
-        var contract_buf = new web3.eth.Contract(ABI, INCO_CONTRACT);
-        var amountFee = (web3.utils.toWei(amount.toString())).toString();
+        
+        let bPublicKey = senderWallet.publicKey
 
-        var nonce = null;
-        var txData = null;
+        let contract_buf = new web3.eth.Contract(ABI, INCO_CONTRACT);
+        let amountFee = (web3.utils.toWei(amount.toString())).toString();
 
-        // Prepare contract  to be used
+        let nonce = null;
+        let txData = null;
+
+        // Prepare contract to be used
         try{
             txData = contract_buf.methods
             .transfer(wallet, "" + amountFee)
             .encodeABI();
 
             nonce = await web3.eth
-            .getTransactionCount(user.address)
+            .getTransactionCount(bPublicKey)
             .catch(error => {
                 return 'Error occurred in getting transaction count!';
             });
         }catch(err){
-            console.log("Invalid wallet address: ", user.address);
+            console.log("Invalid wallet address: ", bPublicKey);
             return {errors: {message : "Wallet address is invalid."}};
         }
         
         // Get gas price
-        var gasPriceWeb3 = await web3.eth.getGasPrice();
-        var gasPrice = new BigNumber(gasPriceGlobal);
+        let gasPriceWeb3 = await web3.eth.getGasPrice();
+        let gasPrice = new BigNumber(gasPriceGlobal);
         
         // Calculate amount in Ether value
-        var calculatedAmount = amount * (10 ** INCO_DECIMALS);
+        let calculatedAmount = amount * (10 ** INCO_DECIMALS);
 
         if ( gasPrice.isLessThan(gasPriceWeb3) )
         {
@@ -109,9 +123,9 @@ const Web3Service =
         } 
         
         // Prepare transaction data for contract
-        var txParams = {
+        let txParams = {
             nonce: web3.utils.toHex(nonce),
-            from: user.address,
+            from: bPublicKey,
             to: contract_buf._address,
             gasPrice: web3.utils.toHex(gasPrice),
             gasLimit: web3.utils.toHex(450000),
@@ -119,7 +133,7 @@ const Web3Service =
             data: txData,
         };
 
-        var tx = null;
+        let tx = null;
         try{
             tx = new Tx(txParams);
         }catch(err){
@@ -130,7 +144,7 @@ const Web3Service =
         // Sign transaction with private key, so it is valid for the blockchain
         tx.sign(EthUtil.toBuffer(privateKey));
 
-        var serializedTx = tx.serialize();
+        let serializedTx = tx.serialize();
 
         web3.eth
             // Try to place transaction
@@ -147,7 +161,7 @@ const Web3Service =
             {
                 if(receipt && receipt.status)
                 {
-                    var oTransaction = new Transaction();
+                    let oTransaction = new Transaction();
                     oTransaction.txHash = receipt.transactionHash;
                     oTransaction.from = receipt.from;
                     oTransaction.to = receipt.to;
@@ -155,8 +169,9 @@ const Web3Service =
                     oTransaction.blockNumber = receipt.blockNumber;
                     oTransaction.gas = receipt.gasUsed;
                     oTransaction.gasPrice = receipt.cumulativeGasUsed;
+                    oTransaction.symbol = "INCO";
                     // Time
-                    var date = new Date();
+                    let date = new Date();
                     // Save timestamp without miliseconds
                     oTransaction.timestamp = Math.floor(date.getTime()/1000);
                     if(receipt.contractAddress){
@@ -189,29 +204,40 @@ const Web3Service =
      * @param {user, wallet, amount} 
      * @param {*} res 
      */
-    sendEthCoin: async function({user, wallet, amount}, res)
+    sendEthCoin: async function({user, wallet, amount, senderWallet}, res)
     {
-        const privateKeyStr = stripHexPrefix(user.privateKey);
+        // let senderWallet = await Wallet.findOne({ user: user, type: 'ETH' })
+        const privateKeyStr = stripHexPrefix(senderWallet.privateKey);
         const privateKey = Buffer.from(privateKeyStr, 'hex');
+        
+        let bPublicKey = senderWallet.publicKey
 
-        var nonce = null;
+        let nonce = null;
+        
         try{
             nonce = await web3.eth
-            .getTransactionCount(user.address)
+            .getTransactionCount(bPublicKey)
             .catch(error => {
-                return 'Error occurred in getting transaction count!';
+                console.log(nonce)
+                return res.json({
+                    error: 'Error occurred in getting transaction count!',
+                })
             });
-        }catch(err){
-            console.log("Invalid wallet address: ", user.address);
-            return {errors: {message : "Wallet address is invalid."}};
+        } catch(err){
+            console.log("Invalid wallet address: ", bPublicKey);
+            return res.json({
+               errors: {
+                   message : "Wallet address is invalid."
+               } 
+            })
         }
         
         // Get gas price
-        var gasPriceWeb3 = await web3.eth.getGasPrice();
-        var gasPrice = new BigNumber(gasPriceGlobal);
+        let gasPriceWeb3 = await web3.eth.getGasPrice();
+        let gasPrice = new BigNumber(gasPriceGlobal);
         
         // Calculate amount in Ether value
-        var calculatedAmount = amount * (10 ** 18);
+        let calculatedAmount = amount * (10 ** 18);
 
         if ( gasPrice.isLessThan(gasPriceWeb3) )
         {
@@ -219,27 +245,29 @@ const Web3Service =
         } 
         
         // Prepare transaction data
-        var txParams = {
+        let txParams = {
             nonce: web3.utils.toHex(nonce),
-            from: user.address,
+            from: bPublicKey,
             to: wallet,
             gasPrice: web3.utils.toHex(gasPrice),
             gasLimit: web3.utils.toHex(450000),
             value: web3.utils.toHex(calculatedAmount),
         };
 
-        var tx = null;
+        let tx = null;
         try{
-            tx = new Tx(txParams);
-        }catch(err){
+            tx = await new Tx(txParams);
+        } catch(err){
             console.log(err);
-            return {errors: {message : "Destination wallet address is invalid."}};
+            return res.json({
+                errors: {message : "Destination wallet address is invalid."}
+            }) 
         }
         
         // Sign transaction with private key, so it is valid for the blockchain
         tx.sign(EthUtil.toBuffer(privateKey));
 
-        var serializedTx = tx.serialize();
+        let serializedTx = tx.serialize();
 
         web3.eth
             // Try to place transaction
@@ -251,12 +279,13 @@ const Web3Service =
                 });
                 return true;
             })
+
             // Transaction worked
             .on('receipt', receipt => 
             {
                 if(receipt && receipt.status)
                 {
-                    var oTransaction = new Transaction();
+                    let oTransaction = new Transaction();
                     oTransaction.txHash = receipt.transactionHash;
                     oTransaction.from = receipt.from;
                     oTransaction.to = receipt.to;
@@ -264,8 +293,9 @@ const Web3Service =
                     oTransaction.blockNumber = receipt.blockNumber;
                     oTransaction.gas = receipt.gasUsed;
                     oTransaction.gasPrice = receipt.cumulativeGasUsed;
+                    oTransaction.symbol = "ETH";
                     // Time
-                    var date = new Date();
+                    let date = new Date();
                     // Save timestamp without miliseconds
                     oTransaction.timestamp = Math.floor(date.getTime()/1000);
                     if(receipt.contractAddress){
@@ -291,6 +321,54 @@ const Web3Service =
                 return err;
             });  
     },
+
+    /**
+	 * Parse transactions from EtherScan to a way that the
+	 * 	front-end will understand
+	 * 
+	 * @param {Array} transactions 
+	 */
+	parseEthTransactions: function(transactions)
+	{
+		let aTransactions = [];
+		let aSaveTransactions = [];
+
+		transactions
+		// Sort elements in desc order
+		.sort(function(a, b) {
+			return b.timeStamp - a.timeStamp;
+		}).
+		// Create new elements
+		forEach(element => 
+		{
+			let oTransaction = new Transaction();
+
+			oTransaction.txHash = element.hash.toLowerCase();
+			oTransaction.from = element.from.toLowerCase();
+			oTransaction.to = element.to.toLowerCase();
+			oTransaction.value = element.value;
+			oTransaction.blockNumber = element.blockNumber;
+			oTransaction.gas = element.gas;
+			oTransaction.gasPrice = element.gasPrice;
+			oTransaction.timestamp = element.timeStamp;
+			
+			if(element.contractAddress != "")
+			{
+				oTransaction.contractAddress = element.contractAddress.toLowerCase();
+			}
+
+			oTransaction.symbol = getETHCoinName(element);
+			
+			aSaveTransactions.push(oTransaction);
+			aTransactions.push(oTransaction.toJSON());
+		});
+
+		// Save transactions on Mongo asynchronously 
+		saveTransactions(aSaveTransactions);
+
+		// Return parsed transactions
+		return aTransactions;
+	},
 
     //TODO: Get balance from blockchian based on contract address and account address
     getAccountBalance: function(accountNo, contractAddress = null)

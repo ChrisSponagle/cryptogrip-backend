@@ -8,16 +8,24 @@
 	Author: Lorran Pegoretti
 	Email: lorran.pegoretti@keysupreme.com
 	Subject: Incodium Wallet API
-	Date: 07/12/2018
+  Date: 07/12/2018
+  Updated: 03/2019 | Cobee Kwon
 *********************************************************/
-
 
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
+const Wallet = mongoose.model('Wallet');
 const {isFullyAuthenticated} = require("../services/AuthenticationService");
-const {getTransactionsFromEtherScanByAccount, getTransactionsFromDbByAccount} = require("../services/TransactionHistoryService");
-const {getBalanceFromEtherScanByAccount, getBalanceFromBlockChain} = require("../services/BalanceService");
+const {
+  getTransactions
+} = require("../services/TransactionHistoryService");
+const {
+  getETHBalance,
+  getBTCBalance,
+} = require("../services/BalanceService");
+const {checkERC20Coin} = require("../services/CryptoParser");
 const {sendCoin} = require("../services/Web3Service");
+
 
 /**
  * Get balance of user's account
@@ -35,7 +43,7 @@ exports.sendCoin = function(req, res, next)
   const wallet = req.body.wallet || req.query.wallet;
 
   // Validate input values
-  var aErrors = checkSendMandatoryFields({coin, amount, wallet});
+  let aErrors = checkSendMandatoryFields({coin, amount, wallet});
   if( Object.keys(aErrors).length ){
     return res.json({
       success: false,
@@ -45,7 +53,7 @@ exports.sendCoin = function(req, res, next)
   }
 
   User.findById(sUserId)
-    .then(function(user)
+    .then(async function(user)
     {
       // If user is not found, just return false
       if( !user )
@@ -56,26 +64,44 @@ exports.sendCoin = function(req, res, next)
         }).status(422);
       }
 
-      if( user.address.toLowerCase() == wallet.toLowerCase() )
-      {
-        return res.json({
-          success: false,
-          errors: {message: "Can not send coin to same address"}
-        }).status(422);
+      // Check if coin is an ERC20 coin, 
+      // if it is, use ETH wallet address
+      let sWalletCoin = coin.toUpperCase();
+      if( checkERC20Coin(sWalletCoin) ){
+        sWalletCoin = "ETH";
       }
-      
-      const pSendCoin = sendCoin({user, coin, wallet, amount}, res);
-      pSendCoin
-      .then(function(err){
-        if(err && err.errors)
-        {
-          return res.json({
-            success: false,
-            errors: err.errors
-          });
-        }
-      });
 
+      Wallet.findOne({ user: sUserId, type: sWalletCoin })
+        .then(senderWallet => {
+          // If there is no wallet for this coin
+          if(!senderWallet){
+            return res.json({
+              success: false,
+              errors: {message: "Can't find wallet for this coin."}
+            }).status(422);
+          }
+          // Check if transfer is for the same wallet
+          else if( (senderWallet.publicKey || senderWallet.publicKey.toLowerCase()) == (wallet || wallet.toLowerCase()) )
+          {
+            return res.json({
+              success: false,
+              errors: {message: "Can not send coin to same address"}
+            }).status(422);
+          }
+          else{
+            const pSendCoin = sendCoin({user, wallet, amount, coin, senderWallet}, res);
+            pSendCoin
+            .then(function(err){
+              if(err && err.errors)
+              {
+                return res.json({
+                  success: false,
+                  errors: err.errors
+                });
+              }
+            });
+          }
+        })
     });
 }
 
@@ -92,7 +118,7 @@ exports.getUserBalance = function(req, res, next)
   const sUserId = req.payload.id;
 
   User.findById(sUserId)
-  .then(function(user)
+  .then(async function(user)
   {
 
     if(!user)
@@ -104,32 +130,21 @@ exports.getUserBalance = function(req, res, next)
     }
 
     // Confim user is fully authenticated
-    if( !isFullyAuthenticated({user, res}) ){
+    if( !isFullyAuthenticated({user, res}) )
+    {
       return false;
     }
 
-     // Get transactions already parsed
-     var pParsedBalance = getBalanceFromEtherScanByAccount(user.address);
-     pParsedBalance.then(function(balances)
-     {
-       // If it is not possible to get balance from EtherScan get it from blockchain
-       //TODO: Get balance from blockchain
-      //  if( !balances )
-      //  {
-         
-      //   pParsedBalance = getBalanceFromBlockChain(user.address);
-      //   pParsedBalance.then(function(blockChainBalance)
-      //    {
-      //      return res.json({"success": true,
-      //                       "balance": blockChainBalance});
-      //    });
-      //  }
-      //  else{
-           return res.json({"success": true,
-                            "balance": balances});  
-      //  }
-     });
-    
+    Promise.all([getETHBalance(sUserId), getBTCBalance(sUserId)])
+    .then( (aResults) => 
+    {
+      let aBalances = aResults.reduce((a, b) => [...a, ...b], []);
+
+      return res.json({
+        "success": true,
+        "balance": aBalances
+      });
+    });  
   });
 }
 
@@ -140,13 +155,14 @@ exports.getUserBalance = function(req, res, next)
  * @param {*} res - Response object
  * @param {*} next 
  */
-exports.getUserTransactionsHistory = function(req, res, next)
+exports.getUserTransactionsHistory = async function(req, res, next)
 {
     // Get values from request
     const sUserId = req.payload.id;
+    let sSymbol = req.body.coin || req.query.coin || null;
 
     User.findById(sUserId)
-    .then(function(user)
+    .then(async function(user)
     {
 
       if(!user)
@@ -162,25 +178,29 @@ exports.getUserTransactionsHistory = function(req, res, next)
         return false;
       }
 
-      // Get transactions already parsed
-      var pParsedTransactions = getTransactionsFromEtherScanByAccount(user.address);
-      pParsedTransactions.then(function(transactions)
+      let aUserWallets = null;
+
+      if( !sSymbol )
       {
-        // If it is not possible to get transactions from EtherScan get it from our database
-        if( !transactions )
+        aUserWallets = await Wallet.find({user: sUserId});
+      }
+      else{
+        sSymbol = sSymbol.toUpperCase();
+
+        // Check if coin request is ERC20 or not
+        if( checkERC20Coin(sSymbol) )
         {
-          pParsedDbTransactions = getTransactionsFromDbByAccount(user.address);
-          pParsedDbTransactions.then(function(dbTransactions)
-          {
-            return res.json({success: true,
-                             transactions: dbTransactions});
-          });
+          aUserWallets = await Wallet.find({user: sUserId, type: "ETH"});
         }
         else{
-            return res.json({success: true,
-                             transactions: transactions});  
+          aUserWallets = await Wallet.find({user: sUserId, type: sSymbol});
         }
-      });
+      }
+
+      // Get transactions already parsed
+      let pParsedTransactions = await getTransactions(aUserWallets, sSymbol);
+      return res.json({success: true,
+                        transactions: pParsedTransactions});
     });
 }
 
