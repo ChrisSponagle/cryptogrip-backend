@@ -35,7 +35,7 @@ let aPromises = [];
 User.find()
 .then( (aUsers) => {
     aUsers.forEach( async (oUser) => {
-        console.log(oUser);
+
         if(oUser.privateKey)
         {
             // Create new Wallet Account
