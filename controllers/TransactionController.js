@@ -116,6 +116,7 @@ exports.getUserBalance = function(req, res, next)
 {
   // Get values from request
   const sUserId = req.payload.id;
+  let sSymbol = req.body.coin || req.query.coin || null;
 
   User.findById(sUserId)
   .then(async function(user)
@@ -135,9 +136,17 @@ exports.getUserBalance = function(req, res, next)
       return false;
     }
 
-    Promise.all([getETHBalance(sUserId), getBTCBalance(sUserId)])
+    // TODO: Should check on database coins that user has and get all of them
+    Promise.all([getETHBalance(sUserId, sSymbol), getBTCBalance(sUserId, sSymbol)])
     .then( (aResults) => 
-    {
+    { 
+      
+      /// Remove null elements
+      aResults = aResults.filter(function (el) {
+        return el != null;
+      });
+
+      console.log(aResults);
       let aBalances = aResults.reduce((a, b) => [...a, ...b], []);
 
       return res.json({

@@ -33,11 +33,11 @@ const BalanceService =
 	 * 
 	 * @param {*} iUserId 
 	 */
-	getETHBalance: async function(iUserId)
+	getETHBalance: async function(iUserId, sSymbol)
     {
         return Wallet.findOne({ user: iUserId, type: 'ETH' })
           .then(res => {
-            let pParsedBalance = BalanceService.getBalanceFromEtherScanByAccount(res.publicKey);
+            let pParsedBalance = BalanceService.getBalanceFromEtherScanByAccount(res.publicKey, sSymbol);
             return pParsedBalance
           })
           .then(balances => {
@@ -52,8 +52,14 @@ const BalanceService =
 	 * 
 	 * @param {*} iUserId 
 	 */
-	getBTCBalance: async function(iUserId)
+	getBTCBalance: async function(iUserId, sSymbol)
     {
+			// If symbol requested is not BTC, just return null
+			if(sSymbol && sSymbol != "BTC")
+			{
+				return null;
+			}
+
       return Wallet.findOne({ user: iUserId, type: 'BTC' })
 			.then(res => {
 				let pParsedBalance = BalanceService.getBalanceFromBlockchainInfoByAccount(res.publicKey);
@@ -72,10 +78,35 @@ const BalanceService =
 	 * 
 	 * @param {String} accountNo 
 	 */
-    getBalanceFromEtherScanByAccount : async function (accountNo) 
+    getBalanceFromEtherScanByAccount : async function (accountNo, sSymbol) 
     {
 			// Parse account to lower case
 			accountNo = accountNo.toLowerCase();
+
+			let oETHCall = null;
+			let oINCOCall =  null;
+
+			// If not specific symbol is requested, gets everything
+			if(!sSymbol)
+			{
+				oETHCall = axios.get(ETH_URL+accountNo);
+				oINCOCall = axios.get(INCO_URL+accountNo);
+			}
+			else{
+				switch(sSymbol){
+					case "ETH":{
+						oETHCall = axios.get(ETH_URL+accountNo);
+						break;
+					}
+					case "INCO":{
+						oINCOCall = axios.get(INCO_URL+accountNo);
+						break;
+					}
+
+					default:
+						break;
+				}
+			}
 
 			console.log("Getting ETH balance: ");
 			console.log("    URL: ", ETH_URL+accountNo);
@@ -84,20 +115,31 @@ const BalanceService =
 			console.log("    URL: ", INCO_URL+accountNo);
 
 			return axios.all([
-				axios.get(ETH_URL+accountNo),
-				axios.get(INCO_URL+accountNo)
+				// axios.get(ETH_URL+accountNo),
+				oETHCall,
+				oINCOCall
+				// axios.get(INCO_URL+accountNo)
 		  ])
-		  .then(axios.spread((ethRes, incoRes) => {
-              let ethData = ethRes.data;
-							ethData.contractAddress =  null;
-							ethData.symbol =  "ETH";
+			.then(axios.spread((ethRes, incoRes) => 
+			{
+							let aBalances	= [];
+							const ethData = ethRes ? ethRes.data : null;
+							const incoData = incoRes ? incoRes.data : null;
 
-              let incoData = incoRes.data;
-							incoData.contractAddress = INCO_CONTRACT;
-							incoData.symbol = "INCO";
+							if(ethData)
+			  			{	
+								ethData.contractAddress =  null;
+								ethData.symbol =  "ETH";
+								aBalances.push(ethData);
+							}
+
+							if(incoData)
+			  			{	
+								incoData.contractAddress = INCO_CONTRACT;
+								incoData.symbol = "INCO";
+								aBalances.push(incoData);
+							}
 							
-              let aBalances = [ethData, incoData];
-
               let aParsedBalances = BalanceService.parseBalance(aBalances);
 			  return aParsedBalances;
 		  }))
@@ -115,7 +157,7 @@ const BalanceService =
 	 */
     getBalanceFromBlockchainInfoByAccount : async function (accountNo) 
     {
-			let addressCall = BTC_URL+accountNo+"?confirmations=6&api_code="+BLOCKCHAIN_INFO_KEY;
+			let addressCall = BTC_URL+accountNo+"?api_code="+BLOCKCHAIN_INFO_KEY;
 
 			console.log("Getting BTC balance: ");
 			console.log("    URL: " + addressCall);

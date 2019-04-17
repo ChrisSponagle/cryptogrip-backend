@@ -7,8 +7,6 @@ let http = require('http'),
     crypto = require('crypto');
     flash = require('express-flash');
 
-
-
 var isProduction = process.env.PRODUCTION == 1;
 
 mongoose.set('useCreateIndex', true);
@@ -29,8 +27,6 @@ const {createBtcAccount} = require("../services/BTCService");
 
 const User = mongoose.model("User");
 const Wallet = mongoose.model("Wallet");
-
-let aPromises = [];
 
 User.find()
 .then( (aUsers) => {
