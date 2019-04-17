@@ -92,15 +92,25 @@ const BalanceService =
 			{
 				oETHCall = axios.get(ETH_URL+accountNo);
 				oINCOCall = axios.get(INCO_URL+accountNo);
+				console.log("Getting ETH balance: ");
+				console.log("    URL: ", ETH_URL+accountNo);
+				console.log("Getting INCO balance: ");
+				console.log("    URL: ", INCO_URL+accountNo);
 			}
 			else{
 				switch(sSymbol){
 					case "ETH":{
 						oETHCall = axios.get(ETH_URL+accountNo);
+
+						console.log("Getting ETH balance: ");
+					  console.log("    URL: ", ETH_URL+accountNo);
 						break;
 					}
 					case "INCO":{
 						oINCOCall = axios.get(INCO_URL+accountNo);
+
+						console.log("Getting INCO balance: ");
+						console.log("    URL: ", INCO_URL+accountNo);
 						break;
 					}
 
@@ -109,17 +119,9 @@ const BalanceService =
 				}
 			}
 
-			console.log("Getting ETH balance: ");
-			console.log("    URL: ", ETH_URL+accountNo);
-
-			console.log("Getting INCO balance: ");
-			console.log("    URL: ", INCO_URL+accountNo);
-
 			return axios.all([
-				// axios.get(ETH_URL+accountNo),
 				oETHCall,
 				oINCOCall
-				// axios.get(INCO_URL+accountNo)
 		  ])
 			.then(axios.spread((ethRes, incoRes) => 
 			{
