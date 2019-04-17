@@ -37,13 +37,13 @@ User.find()
     aUsers.forEach( async (oUser) => {
         
         let oWallet = await Wallet.find({ user: oUser.id, type: "BTC"});
-        console.log(oWallet.length);
+
         if(oWallet.length)
         {
             console.log("User already has BTC wallet.");
             return;
         }
-        
+
         if(oUser.privateKey)
         {
             // Create new Wallet Account
