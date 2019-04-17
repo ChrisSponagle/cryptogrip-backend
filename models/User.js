@@ -71,9 +71,9 @@ UserSchema.methods.generateJWT = function()
   return jwt.sign({
     id: this._id,
     username: this.username,
-    // exp: parseInt(exp.getTime() / 1000),
+    exp: parseInt(exp.getTime() / 1000),
     //TODO: Revert this
-    exp: parseInt(exp.getTime()*10),
+    // exp: parseInt(exp.getTime()*10),
   }, secret);
 };
 
