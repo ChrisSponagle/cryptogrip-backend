@@ -17,6 +17,7 @@ const Wallet = mongoose.model('Wallet');
 const axios = require("axios");
 const ETHERSCAN_URL = process.env.ETHERSCAN_API;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
+const BLOCKCHAIN_INFO_KEY = process.env.BLOCKCHAIN_INFO_KEY;
 const INCO_CONTRACT = process.env.INCO_TOKEN;
 const BLOCKCHAIN_INFO_URL = process.env.BLOCKCHAIN_INFO_URL;
 const {parseValue, getETHCoinName, parseBtcValue} = require("../services/CryptoParser");
@@ -114,7 +115,7 @@ const BalanceService =
 	 */
     getBalanceFromBlockchainInfoByAccount : async function (accountNo) 
     {
-			let addressCall = BTC_URL+accountNo+"?confirmations=6";
+			let addressCall = BTC_URL+accountNo+"?confirmations=6&api_code="+BLOCKCHAIN_INFO_KEY;
 
 			console.log("Getting BTC balance: ");
 			console.log("    URL: " + addressCall);

@@ -26,6 +26,7 @@ const {parseEthTransactions} = require("./Web3Service");
 const ETH_URL = ETHERSCAN_URL+"?module=account&action=txlist&startblock=0&endblock=99999999&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
 const INCO_URL = ETHERSCAN_URL+"?module=account&action=tokentx&contractaddress="+INCO_CONTRACT+"&page=1&offset=100&sort=desc&apikey="+ETHERSCAN_KEY+"&address=";
 const BLOCKCHAIN_INFO_URL = BLOCKCHAIN_INFO+"/rawaddr/";
+const BLOCKCHAIN_INFO_KEY = process.env.BLOCKCHAIN_INFO_KEY;
 
 const TransactionHistoryService = 
 {   
@@ -118,7 +119,7 @@ const TransactionHistoryService =
 	 */
 	getTransactionsFromBlockInfoByAccount: async function(accountNo, sSymbol)
 	{
-		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo;
+		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo+"?api_code="+BLOCKCHAIN_INFO_KEY;
 		console.log("   URL: ", sBtcInfo);
 
 		return axios.get(sBtcInfo)
