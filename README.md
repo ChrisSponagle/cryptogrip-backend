@@ -66,6 +66,7 @@ ETHERSCAN_API=KT9NCH34IG9VWUGZ5N63PKSGTJC1G9HE9Q
 BITCOIN_MAIN_NETWORK=0
 BLOCKCHAIN_INFO_URL="https://testnet.blockchain.info"
 BLOCKCHAIN_URL="https://www.blockchain.com/en/btctest/tx/"
+BLOCKCHAIN_INFO_KEY="ffb5af84-ab89-4043-826c-7360b3ff1bf3"
 ```
 
 #### Main Network
@@ -74,4 +75,5 @@ BLOCKCHAIN_URL="https://www.blockchain.com/en/btctest/tx/"
 BITCOIN_MAIN_NETWORK=1
 BLOCKCHAIN_INFO_URL="https://blockchain.info"
 BLOCKCHAIN_URL="https://www.blockchain.com/en/btc/tx/"
+BLOCKCHAIN_INFO_KEY="ffb5af84-ab89-4043-826c-7360b3ff1bf3"
 ```

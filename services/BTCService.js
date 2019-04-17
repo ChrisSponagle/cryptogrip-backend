@@ -37,6 +37,8 @@ const BLOCKCHAIN_INFO = process.env.BLOCKCHAIN_INFO_URL;
 // Prepare URLs to be called
 const BLOCKCHAIN_INFO_URL = BLOCKCHAIN_INFO+"/rawaddr/";
 
+const BLOCKCHAIN_INFO_KEY = process.env.BLOCKCHAIN_INFO_KEY;
+
 const BTCService = 
 { 
    /**
@@ -144,7 +146,7 @@ const BTCService =
 	{
 		console.log(fValue);
 		// Get the last 500 transactions fot this account
-		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo+"?limit=500";
+		let sBtcInfo = BLOCKCHAIN_INFO_URL+accountNo+"?limit=500&api_code="+BLOCKCHAIN_INFO_KEY;
 		console.log("   URL: ", sBtcInfo);
 
 		return axios.get(sBtcInfo)
