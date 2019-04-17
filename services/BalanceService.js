@@ -75,6 +75,7 @@ const BalanceService =
 
     /**
 	 * Get balances of account on EtherScanIo
+	 * TODO: Should check on database coins that user has and get all of them
 	 * 
 	 * @param {String} accountNo 
 	 */
